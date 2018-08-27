@@ -115,10 +115,11 @@ contains
   !     Column2 : Character Variable with any length. Specifies the information in the second column
 
   
-  subroutine OpenFile( Unum, Name, Contents, Column1, Column2 )
+  subroutine OpenFile( Unum, Name, Contents, Column1, Column2, num_procs )
     implicit none
     integer, intent(in) :: Unum
     character(len=*), intent(in) :: Name, Contents, Column1, Column2
+    integer, intent(in), optional :: num_procs
     character(len=25) :: filename
     filename = Name
     filename = FileNamer(filename)
@@ -138,7 +139,12 @@ contains
     write(Unum,*) "#Interaction strength = ", uSite
     write(Unum,*) "#Chemical Potential = ", ChemPot
     write(Unum,*) "#Dimensions = ", dim
-    write(Unum,*) "#Number of systems = ", systemn
+    if ( Present(num_procs) ) then
+       write(Unum,*) "#Number of systems = ", num_procs*systemn
+    else if ( .not. Present(num_procs) ) then
+       write(Unum,*) "#Number of systems = ", systemn
+    end if
+    
 
   end subroutine OpenFile
   

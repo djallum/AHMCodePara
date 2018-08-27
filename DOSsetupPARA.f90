@@ -418,7 +418,7 @@ contains
 
     CALL mpi_init(ierr)
     CALL mpi_comm_rank(MPI_COMM_WORLD,my_id,ierr)
-    CALL mpi_comm_rank(MPI_COMM_WORLD,num_procs,ierr)
+    CALL mpi_comm_size(MPI_COMM_WORLD,num_procs,ierr)
 
     CALL init_random_seed(my_id)
     
@@ -457,14 +457,14 @@ contains
     
        If ( CalcDos ) then
           if ( .not. (DOS_MaxCluster .eq. ClusterMax) ) then
-             CALL OpenFile(100, "DOS", "Density of States", "Energy", "Density of States" )
+             CALL OpenFile(100, "DOS", "Density of States", "Energy", "Density of States", num_procs )
              write(100,*) "#Maximum cluster Size included: ", ClusterMax
              write(100,*) "#Time (s) = ", TIME 
              CALL PrintData(100, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,1), DroppedDos)
              Close(100)
           else
              do i=1,ClusterMax
-                CALL OpenFile(100+i, "DOSInc"//trim(str(i))//"_", "Density of States", "Energy", "Density of States" )
+                CALL OpenFile(100+i, "DOSInc"//trim(str(i))//"_", "Density of States", "Energy", "Density of States", num_procs )
                 write(100+i,*) "#Maximum cluster Size included: ", i
                 write(100+i,*) "#Time (s) = ", TIME
                 !if (i .eq. 1) print*, DOS(i,1:100)
@@ -478,7 +478,7 @@ contains
        end If
        If ( CalcPot ) then
           CALL OpenFile(200, "POT", "Distribution of Site Potentials in counted clusters", "Site Potentials", &
-               "Height of distribution" )
+               "Height of distribution", num_procs )
           write(200,*) "#Maximum cluster Size included: ", ClusterMax
           write(200,*) "#Time (s) = ", TIME
           CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, bins, Potential )
