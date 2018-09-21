@@ -48,18 +48,18 @@ module inputs
   implicit none
   
   ! PHYSICAL PARAMETERS
-  integer, parameter :: systemn = 5000                      
-  integer, parameter :: dim = 1000                          
+  integer, parameter :: systemn = 2500000                      
+  integer, parameter :: dim = 4                          
   real, parameter :: DELTA = 20                             
   real, parameter  :: hop = -1                              
   real, parameter :: uSite = 8                             
   real, parameter :: ChemPot = uSite/2                      
   
   ! CODING PARAMETERS
-  real, parameter :: bond_cutoff = 0.2
+  real, parameter :: bond_cutoff = 0.5
   real, parameter :: prune_cutoff = 3
   integer, parameter :: bins = 1000
-  integer, parameter :: ClusterMax = 6
+  integer, parameter :: ClusterMax = 7
   integer, parameter :: DOS_MaxCluster = ClusterMax
   real, allocatable :: DOS(:,:) !DOS(DOS_MaxCluster,bins)
   real, parameter :: DOS_EMax = 5, DOS_EMin = -DOS_EMax
