@@ -6,7 +6,7 @@ Module PreAnalysis
   Logical :: FirstRun = .true.
 
 contains
-  subroutine CorrectInputs()
+  subroutine CorrectInputs( )
     implicit none
     character(len=1) :: Ans
 
@@ -16,7 +16,7 @@ contains
     
     print*, "Disorder Strength: ", DELTA, "Bond cutoff: ", bond_cutoff, "Interaction Strength", uSite
     print*, "System Size: ", dim, "Number of systems: ", systemn, "Hopping Potential: ", Hop
-    print*, "Prune Cutoff: ", prune_cutoff
+    print*, "Prune Cutoff: ", prune_cutoff; print*, "Drop cutoff: ", drop_cutoff
     
 
     if ( CalcDos ) then
@@ -25,6 +25,29 @@ contains
     else
        print*, "Density of States", CalcDos
     end if
+
+    if ( (DOS_MaxCluster .eq. 1) .and. ( .not. GradientDOS ) ) then
+       print*, "Incompatible values of DOS_MaxCluster and GradientDOS"
+       STOP
+    end if
+    
+    if ( DOS_MaxCluster .eq. 1 ) then
+       print*, "DOS per cluster size disabled"
+    else if (DOS_MaxCluster .eq. ClusterMax) then
+       print*, "DOS per cluster size enabled"
+       if ( GradientDOS ) then
+          print*, "DOS is cumulative"
+       else
+          print*, "DOS is not cumulative"
+       end if
+    else
+       print*, "This value of DOS_MaxCluster is not handled: ", DOS_MaxCluster
+       STOP
+    end if
+
+
+    
+    
 
     if ( CalcPot ) then
        print*, "Distribution of Site Potentials", CalcPot
@@ -38,6 +61,8 @@ contains
     print*, "Distribution of log(bonds): ", CalcBondStrength
 
     print*, "Distribution of \Delta\epsilon: ", CalcEnergyDiff
+
+ 
     
     do while ( .true. )
        print*, "Is this correct? (Y/N)"

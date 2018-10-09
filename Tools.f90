@@ -258,6 +258,38 @@ contains
     
    
   end subroutine resize_array
+  
+  subroutine DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize, sitesremoved )
+    implicit none
+
+    ! Inputs
+    integer, intent(in) :: sitesremoved
+    real, dimension(dim-sitesremoved), intent(in) :: SitePotential
+    integer, intent(in) :: weakL, weakR
+    integer, intent(in) :: ClusterSize
+
+    ! Outputs
+    real, dimension(ClusterSize), intent(out) :: Sites
+
+    ! Other
+    integer :: EndSite
+    
+    if ( (weakL .gt. weakR) .and. ( ClusterSize .gt. 1 ) ) then
+       EndSite = (dim - sitesremoved) - weakL
+       Sites(1:EndSite) = SitePotential((weakL+1):(dim - sitesremoved))
+       Sites((EndSite+1):ClusterSize) = SitePotential(1:weakR)
+    else if ( (weakL .gt. weakR) .and. ( ClusterSize .eq. 1 ) ) then
+       Sites = SitePotential(weakR:weakR)
+    else if ( size(SitePotential) .eq. ClusterSize ) then
+       Sites = SitePotential
+    else
+       Sites = SitePotential((weakL+1):weakR)
+    end if
+
+  end subroutine DefineCluster
+  
+    
+       
 
   !     str(k) takes an integer k as input and returns a string with the same integer
   

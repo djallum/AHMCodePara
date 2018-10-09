@@ -47,17 +47,17 @@ contains
     implicit none
     
                 !---------------------------Inputs-------------------------------------------
-    real, dimension(:), intent(in) :: SitePotential, Hops
+    real, dimension(:), intent(inout) :: SitePotential, Hops
     integer, intent(in) :: ClusterSize
     integer, intent(in) :: weakL, weakR
 
                 !---------------------------Outputs------------------------------------------
-    real, dimension(:), allocatable :: Cont
+    real, dimension(:), allocatable :: Energy
     real, dimension(:), allocatable :: Weight
     real, intent(out) :: Teff
     integer, intent(inout) :: SitesRemoved
     integer, intent(inout) :: SitesIgnored
-    real, intent(inout) :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS
+    real, intent(inout) :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
 
                 !---------------------------Programming Variables----------------------------
     real w1, w2, w3                                      ! The three possible grand potentials for a single site cluster
@@ -84,37 +84,37 @@ contains
        w3 = 2*SitePotential(Llabel+1) - 2*ChemPot + uSite !   "       "     of the doubly occupied state 
        
                  !---------------------------Determine the contributions/weights--------------
-       ! Cont/Weight are allocatable because number of contributions depends on which ground state we are in.
+       ! Energy/Weight are allocatable because number of contributions depends on which ground state we are in.
        if ( (w1 .le. w2) .and. (w1 .le. w3) ) then       ! If w1 is the ground state
-          allocate(Cont(1))
+          allocate(Energy(1))
           allocate(Weight(1))
 
           ! Adding an electron when going from unoccupied state to singly occupied
           ! Convention for adding an electron is "Final grand potential" - "Initial Grand Potential"
-          Cont = w2 - w1
+          Energy = w2 - w1
           Weight = 1
           
        else if ( (w2 .le. w1) .and. (w2 .le. w3) ) then
-          allocate(Cont(2))
+          allocate(Energy(2))
           allocate(Weight(2))
   
           ! Removing an electron when going from singly occupied state to unoccupied
           ! Convention for removing an electron is "Initial Grand Potential" - "Final grand potential" 
-          Cont(1) = w2 - w1
+          Energy(1) = w2 - w1
           Weight(1) = 0.5
 
           ! Adding an electron when going from singly occupied state to doubly occupied
           ! Convention for adding an electron is "Final grand potential" - "Initial Grand Potential"
-          Cont(2) = w3 - w2
+          Energy(2) = w3 - w2
           Weight(2) = 0.5
           
        else if ( (w3 .le. w1) .and. (w3 .le. w2) ) then
-          allocate(Cont(1))
+          allocate(Energy(1))
           allocate(Weight(1))
 
           ! Removing an electron when going from doubly occupied state to singly occupied
           ! Convention for removing an electron is "Initial Grand Potential" - "Final grand potential"
-          Cont = w3 - w2
+          Energy = w3 - w2
           Weight = 1
           
        else
@@ -126,43 +126,19 @@ contains
        
                 !---------------------------Larger than single site clusters-----------------
     else if ( ( ClusterSize .ge. 1 ) .and. ( ClusterSize .le. ClusterMax ) ) then
-       allocate(Cont(2*ClusterSize*(4**ClusterSize)))
+       allocate(Energy(2*ClusterSize*(4**ClusterSize)))
        allocate(Weight(2*ClusterSize*(4**ClusterSize)))
 	
-       Cont = 0.0
+       Energy = 0.0
        Weight = 0.0
 
-       if ( (weakL .gt. weakR) .and. ( ClusterSize .gt. 1 ) ) then
-          EndSite = (dim - sitesremoved) - weakL
-          Sites(1:EndSite) = SitePotential((weakL+1):(dim - sitesremoved))
-          Sites((EndSite+1):ClusterSize) = SitePotential(1:weakR)
-       else if ( (weakL .gt. weakR) .and. ( ClusterSize .eq. 1 ) ) then
-          Sites = SitePotential(weakR:weakR)
-       else if ( size(SitePotential) .eq. ClusterSize ) then
-          Sites = SitePotential
-       else
-          Sites = SitePotential((weakL+1):weakR)
-       end if
-
-       CALL DiagCluster(ClusterSize,4**ClusterSize,Sites,Cont,Weight,ChemPot,uSite,Hops)
-
+       CALL DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize, sitesremoved )
        
-!       CALL Bin_Data(DOS, Cont, Weight, DroppedDos, DOS_EMax, DOS_EMin)
+       CALL DiagCluster(ClusterSize,4**ClusterSize,Sites,Energy,Weight,ChemPot,uSite,hops)
 
-       if (DOS_MaxCluster .eq. ClusterMax) then
-          do i=ClusterSize,DOS_MaxCluster
-             if (i .eq. ClusterMax) then
-                CALL Bin_Data(my_DOS(:,i), Cont, Weight, my_droppedDOS, DOS_EMax, DOS_EMin)
-             else 
-                CALL Bin_Data(HistoData = my_DOS(:,i), Data = Cont, Weights = Weight &
-                     , Max = DOS_EMax, Min = DOS_EMin )
-             end if
-          end do
-       else if (.not. (DOS_MaxCluster .eq. ClusterMax)) then
-          CALL Bin_Data(my_DOS(:,i), Cont, Weight, my_droppedDOS, DOS_EMax, DOS_EMin)
-       end if
+       CALL BinDOS( my_Dos, Energy, Weight, my_droppedDOS, ClusterSize ) 
        
-       deallocate(Cont, Weight)
+       deallocate(Energy, Weight)
        Teff = 0
     else if ( ClusterSize .gt. clusterMax ) then                
        SitesIgnored = SitesIgnored + ClusterSize         ! Increment the number of sites ignored, happens when cluster is too large
@@ -267,7 +243,7 @@ contains
                 !---------------------------Outputs------------------------------------------                                                    
     integer, intent(inout) :: SitesIgnored
     real, dimension(bins,DOS_MaxCluster), intent(inout) :: my_DOS
-    real, intent(inout) :: my_droppedDOS
+    real, intent(inout) :: my_droppedDOS(DOS_MaxCluster)
     
 
                 !---------------------------Programming Variables----------------------------
@@ -491,7 +467,7 @@ contains
     integer i                                     ! Loop Integer
     real :: start, finish, TIME
     integer :: my_id, ierr, num_procs
-    real :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS
+    real :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
 
  
     !DOS = 0.0
@@ -512,6 +488,7 @@ contains
     CALL mpi_comm_size(MPI_COMM_WORLD,num_procs,ierr)
 
     CALL init_random_seed(my_id)
+    if (my_id .eq. 0) CALL CorrectInputs( )
     
     do i = 1,systemn
        if ( mod(real(i),0.1*systemn) == 0.0 ) then
@@ -532,13 +509,15 @@ contains
        deallocate(SitePotential, Hopping, Bonds, WeakBonds)
     end do
     CALL mpi_Barrier(MPI_COMM_WORLD, ierr)
-    allocate(DOS(bins,DOS_MaxCluster))
-    DOS = 0.0
+    if ( my_id .eq. 0 ) then
+       allocate(DOS(bins,DOS_MaxCluster), DroppedDos(DOS_MaxCluster) )
+       DOS = 0.0
+    end if
+    
     do i=1,DOS_MaxCluster
        CALL mpi_reduce(my_DOS(:,i), DOS(:,i), bins, mpi_real, mpi_sum, 0, mpi_comm_world, ierr)
-       CALL mpi_reduce(my_droppedDOS, DroppedDos, 1, mpi_real, mpi_sum, 0, mpi_comm_world, ierr)  
     end do
-
+    CALL mpi_reduce(my_droppedDOS(:), DroppedDos(:), DOS_MaxCluster, mpi_real, mpi_sum, 0, mpi_comm_world, ierr)
     if (my_id .eq. 0) then
 
        CALL CPU_TIME(finish)
@@ -547,25 +526,9 @@ contains
 
     
        If ( CalcDos ) then
-          if ( .not. (DOS_MaxCluster .eq. ClusterMax) ) then
-             CALL OpenFile(100, "DOS", "Density of States", "Energy", "Density of States", num_procs )
-             write(100,*) "#Maximum cluster Size included: ", ClusterMax
-             write(100,*) "#Time (s) = ", TIME 
-             CALL PrintData(100, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,1), DroppedDos)
-             Close(100)
-          else
-             do i=1,ClusterMax
-                CALL OpenFile(100+i, "DOSInc"//trim(str(i))//"_", "Density of States", "Energy", "Density of States", num_procs )
-                write(100+i,*) "#Maximum cluster Size included: ", i
-                write(100+i,*) "#Time (s) = ", TIME
-                !if (i .eq. 1) print*, DOS(i,1:100)
-                DOS(:,i) = DOS(:,i)/(Sum(DOS(:,DOS_MaxCluster)) + DroppedDos)
-             
-             
-                CALL PrintData(100+i, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,i))
-                Close(100+i)
-             end do
-          end if      
+
+          CALL PrintDOS( TIME, num_procs )
+          
        end If
        If ( CalcPot ) then
           CALL OpenFile(200, "POT", "Distribution of Site Potentials in counted clusters", "Site Potentials", &

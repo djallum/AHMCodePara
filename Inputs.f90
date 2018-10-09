@@ -61,9 +61,8 @@ module inputs
   integer, parameter :: bins = 1000
   integer, parameter :: ClusterMax = 7
   integer, parameter :: DOS_MaxCluster = ClusterMax
-  real, allocatable :: DOS(:,:) !DOS(DOS_MaxCluster,bins)
+  real, allocatable :: DOS(:,:), DroppedDos(:) !DOS(DOS_MaxCluster,bins) ;; DroppedDos(DOS_MaxCluster)
   real, parameter :: DOS_EMax = 5, DOS_EMin = -DOS_EMax
-  real :: DroppedDos 
   integer :: PrunedBonds 
   integer :: StrongestBondsPruned 
   real Potential(bins)
@@ -78,6 +77,7 @@ module inputs
   logical, parameter :: CalcEnergyDiff = ff
   logical, parameter :: CalcDos = tt
   logical, parameter :: CalcPot = ff
+  logical, parameter :: GradientDOS = ff
 
   real :: times
 

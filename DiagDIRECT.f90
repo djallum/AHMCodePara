@@ -9,21 +9,26 @@
 ! DiagCluster is called first and implements the other subroutines the determine the DOS of the cluster
 
 module Diag
-  use Inputs, only: drop_cutoff
+  use Inputs
   implicit none
-  integer, dimension(:,:), allocatable :: fock_states       ! array that stores each FS represented in binary (see above)
-  integer, dimension(:,:), allocatable :: PES_down, PES_up   ! lookup tables for PES of many-body groundstate (MBG) transformations (ex. c|Psi0>)
-  integer, dimension(:,:), allocatable :: IPES_down, IPES_up ! lookup tables for PES of MBG transformations (ex. c^{dagger}|Psi0>)
-  integer, dimension(:,:), allocatable :: phase_PES_down, phase_PES_up    ! to get anticommutation sign right
-  integer, dimension(:,:), allocatable :: phase_IPES_down, phase_IPES_up  ! to get anticommutation sign right
+  integer, dimension(2,4**nsites_), allocatable :: fock_states       ! array that stores each FS represented in binary (see above)
+  integer, dimension(nsites_,4**nsites_), allocatable :: PES_down, PES_up   ! lookup tables for PES of many-body groundstate (MBG) transformations (ex. c|Psi0>)
+  integer, dimension(nsites_,4**nsites_), allocatable :: IPES_down, IPES_up ! lookup tables for PES of MBG transformations (ex. c^{dagger}|Psi0>)
+  integer, dimension(nsites_,4**nsites_), allocatable :: phase_PES_down, phase_PES_up    ! to get anticommutation sign right
+  integer, dimension(nsites_,4**nsites_), allocatable :: phase_IPES_down, phase_IPES_up  ! to get anticommutation sign right
   
-  integer, dimension(:,:), allocatable :: msize       ! msize(i,j) is size of submatrix with n_up=i and n_dn=j
-  integer, dimension(:,:), allocatable :: mblock      ! mblock(i,j) is index in fock_states array of first state with n_up=i,n_dn=j
+  integer, dimension(0:nsites_,0:nsites_), allocatable :: msize       ! msize(i,j) is size of submatrix with n_up=i and n_dn=j
+  integer, dimension(0:nsites_,0:nsites_), allocatable :: mblock      ! mblock(i,j) is index in fock_states array of first state with n_up=i,n_dn=j
   
   TYPE Cell
      real, allocatable :: comp(:)
-  end type Cell  
+  end type Cell
+
+  TYPE H_hat
+     real, allocatable :: Block(:,:)
+  end type H_hat
   
+  TYPE(H_hat), dimension(0:nsites_,0:nsites_)
 contains
   !************************************************************************************
   !************************************************************************************
@@ -359,7 +364,7 @@ contains
     integer, intent(in) :: nsites, nstates
     integer, intent(in), dimension(:,:) :: neighbours
     real, intent(in) :: U, E(nsites)
-    real, intent(in) :: Hops(:)       ! the hopping integral
+    real, intent(in) :: Hops(nsites-1)       ! the hopping integral
     integer :: istate, isite, i, j, y        ! counters for loops
     integer :: inbr, hoplabel                ! site number of the neighbour
     integer :: new_state(2)                  ! new state after a hopping
@@ -399,11 +404,7 @@ contains
                    end do
                    state_index = istate + 1 - mblock(n_up,n_dn)      ! find the row and column to add the 't' to the Hamiltonian matrix 
                    new_index = new_index + 1 - mblock(n_up,n_dn)
-                   if ( (isite .eq. 1) .and. (inbr .eq. nsites) ) then
-                      hoplabel = nsites
-                   else
-                      hoplabel = isite + y - 2
-                   end if
+                   hoplabel = isite + y - 2
                    HSUB(state_index,new_index) = Hops(hoplabel)*phase
                 end if
              end do
@@ -434,11 +435,7 @@ contains
                    end do
                    state_index = istate + 1 - mblock(n_up,n_dn)
                    new_index = new_index + 1 - mblock(n_up,n_dn)
-                  if ( (isite .eq. 1) .and. (inbr .eq. nsites) ) then
-                      hoplabel = nsites
-                   else
-                      hoplabel = isite + y - 2
-                   end if
+                   hoplabel = isite + y - 2
                    HSUB(state_index,new_index) = Hops(hoplabel)*phase
                 end if
              end do
@@ -464,7 +461,7 @@ contains
     implicit none
     integer, intent(in) :: nsites, nstates
     real, intent(in) :: E(nsites), U, mu
-    real, intent(in) :: Hops(:)                    ! the hopping integral
+    real, intent(in) :: Hops(nsites-1)                    ! the hopping integral
     integer, intent(in), dimension(:,:) :: neighbours
     real, intent(inout), dimension(0:nsites,0:nsites) :: e_ground       ! array of the lowest grand potential (Gpot) of each submatrix (e_ground(i,j) is lowest Gpot of Hij) 
     integer :: n_up,n_dn                     ! the number of up ad down electrons (used to loop over each submatrix)
@@ -485,7 +482,7 @@ contains
     implicit none
     integer, intent(in) :: n_up, n_dn, nsites, nstates, neighbours(:,:)
     real, intent(inout), dimension(0:nsites,0:nsites) :: e_ground
-    real, intent(in) :: E(nsites), U, mu, Hops(:)
+    real, intent(in) :: E(nsites), U, mu, Hops(nsites-1)
     real :: HSUB(msize(n_up,n_dn),msize(n_up,n_dn)), VSUB(msize(n_up,n_dn),msize(n_up,n_dn))
     real :: WSUB(msize(n_up,n_dn))
     
@@ -502,7 +499,7 @@ contains
     integer, intent(in) :: nsites, nstates
     real, intent(in) :: E(nsites), U, mu
     integer, intent(in) :: g_up,g_dn
-    real, intent(in) :: Hops(:)                    ! the hopping integral
+    real, intent(in) :: Hops(nsites-1)                    ! the hopping integral
     integer, intent(in), dimension(:,:) :: neighbours
     real, intent(inout), dimension(:) :: grand_potential          ! grand potentials (eigenenergies - mu*number electrons)
     TYPE(cell), intent(inout), dimension(:) :: eigenvectors        ! the many body eigenvectors (MBE) only coefficients of basis states with same n_up,n_dn as it
@@ -532,7 +529,7 @@ contains
     implicit none
     integer, intent(in) :: nsites,nstates 
     real, intent(in) :: E(nsites), mu, U
-    real, intent(inout) :: Hops(:)
+    real, intent(inout) :: Hops(nsites-1)
     real, dimension(nsites*2*nstates), intent(out) :: Energy, Weight
     
     
