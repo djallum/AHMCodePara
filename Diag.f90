@@ -627,9 +627,14 @@ contains
        do j = 1,2*nstates
           Energy(k) = LDOS(i,j,1)
           Weight(k) = LDOS(i,j,2)
+          If ( Weight(k) .ne. Weight(k) ) then
+             print*, k
+          end If
+          
           k = k + 1
        end do
     end do
+    
     
   end subroutine DiagCluster
   
