@@ -280,7 +280,7 @@ contains
        else if ( (weakL .eq. 0) .and. (weakR .eq. 0) ) then
           ClusterSize = 0
           ClusterStage = ClusterStage + 1
-          Call PreSetUp(ClusterStage)
+          !Call PreSetUp(ClusterStage)
        else
           Print*, "weakL = weakR, but not 0 in system_DoS"
           print*, WeakBonds
@@ -357,7 +357,7 @@ contains
     
     ClusterSize = dim - SitesRemoved
     if ( ClusterSize .le. ClusterMax ) then
-       CALL PreSetUp(ClusterSize)
+       !CALL PreSetUp(ClusterSize)
        weakL = WeakBonds(1); weakR = WeakBonds(1)
        if ( CalcDos ) CALL GetDoS(my_DOS, my_droppedDOS, SitePotential, Teff, ClusterSize &
             , weakL, weakR, SitesRemoved, SitesIgnored )
@@ -365,7 +365,7 @@ contains
        If ( CalcPot ) &
                   CALL GetPotential( SitePotential, weakL, weakR, ClusterSize, SitesRemoved )
     end if
-    CALL PreSetUp(1)    
+    !CALL PreSetUp(1)    
         
     
   end subroutine System_DoS
@@ -403,7 +403,7 @@ contains
     CALL mpi_comm_size(MPI_COMM_WORLD,num_procs,ierr)
 
     CALL init_random_seed(my_id)
-    if (my_id .eq. 0) CALL CorrectInputs( )
+    !if (my_id .eq. 0) CALL CorrectInputs( )
     
     do i = 1,systemn
        if ( mod(real(i),0.1*systemn) == 0.0 ) then
@@ -533,7 +533,7 @@ contains
     if ( .not. GradientDOS ) then
        totalDOSweight = 0.0
        do i=1,ClusterMax
-          totalDOSweight = totalDOSweight + Sum(DOS(:,i)+DroppedDos(i))
+          totalDOSweight = totalDOSweight + Sum(DOS(:,i))+DroppedDos(i)
        end do
        do i=1,ClusterMax
           CALL OpenFile(100+i, "DOS_"//trim(str(i))//"Site_", "Density of States", "Energy", "Density of States", num_procs )

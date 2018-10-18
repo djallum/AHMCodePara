@@ -284,8 +284,8 @@ contains
 
     !Periodic Boundary, Comment to close boundaries
     if ( nsites .gt. 1 ) then
-       neighbours(1,1) = nsites
-       neighbours(nsites,2) = 1
+       !neighbours(1,1) = nsites
+       !neighbours(nsites,2) = 1
     end if
     
   end subroutine make_neighbours
