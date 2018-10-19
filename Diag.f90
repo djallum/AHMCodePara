@@ -21,34 +21,47 @@ module Diag
      
      integer, dimension(:,:), allocatable :: msize       ! msize(i,j) is size of submatrix with n_up=i and n_dn=j
      integer, dimension(:,:), allocatable :: mblock      ! mblock(i,j) is index in fock_states array of first state with n_up=i,n_dn=j
+   contains
+     procedure :: init => PreSetUp
   end type SetUp
 
   type(SetUp) :: Ops(ClusterMax)
   TYPE Cell
      real, allocatable :: comp(:)
+   contains
+     procedure :: delete => Clean_EigenV
   end type Cell  
   
 contains
   !************************************************************************************
   !************************************************************************************
-  subroutine PreSetUp()
+  subroutine PreSetUp(Oper, i)
     implicit none
-    integer :: i
+    class(SetUp), intent(inout) :: Oper
+    integer, intent(in) :: i
 
-    do i=1,ClusterMax
-       allocate( Ops(i)%fock_states(2,4**i),Ops(i)%PES_down(i,4**i),Ops(i)%PES_up(i,4**i), &
-            Ops(i)%IPES_down(i,4**i),Ops(i)%IPES_up(i,4**i),Ops(i)%phase_PES_down(i,4**i), &
-            Ops(i)%phase_PES_up(i,4**i),Ops(i)%phase_IPES_down(i,4**i), &
-            Ops(i)%phase_IPES_up(i,4**i),Ops(i)%msize(0:i,0:i), Ops(i)%mblock(0:i,0:i) )
+    allocate( Oper%fock_states(2,4**i),Oper%PES_down(i,4**i),Oper%PES_up(i,4**i), &
+         Oper%IPES_down(i,4**i),Oper%IPES_up(i,4**i),Oper%phase_PES_down(i,4**i), &
+         Oper%phase_PES_up(i,4**i),Oper%phase_IPES_down(i,4**i), &
+         Oper%phase_IPES_up(i,4**i),Oper%msize(0:i,0:i), Oper%mblock(0:i,0:i) )
     
     call num_sites(i)
     call transformations(i)
     call matrix_sizes(i)
- end do
- 
-
+    
   end subroutine PreSetUp
-  
+  !************************************************************************************
+  !************************************************************************************
+  subroutine Clean_EigenV(EigenV)
+    class(Cell), intent(inout) :: EigenV
+
+    
+    if ( allocated(EigenV%Comp) ) then
+       deallocate(EigenV%Comp)
+    end if
+   
+
+  end subroutine Clean_EigenV 
   !************************************************************************************
   !************************************************************************************
   subroutine num_sites(ClusterSize)
@@ -497,7 +510,7 @@ contains
     real, dimension(nstates) :: grand_potential          ! grand potentials (eigenenergies - mu*number electrons)
     real :: grand_potential_ground=0.0                   ! the lowest grand ensemble energy
     real, dimension(0:nsites,0:nsites) :: e_ground       ! array of the lowest grand potential (Gpot) of each submatrix (e_ground(i,j) is lowest Gpot of Hij) 
-    TYPE(cell), dimension(:), allocatable :: eigenvectors       ! the many body eigenvectors (MBE) only coefficients of basis states with same n_up,n_dn as it  
+    TYPE(cell), dimension(nstates) :: eigenvectors       ! the many body eigenvectors (MBE) only coefficients of basis states with same n_up,n_dn as it  
     integer, dimension(nsites,2) :: neighbours           ! neighbours(i,:) is all the site that are nearest neighbours to site i
     
     integer :: i, j, k                        ! counters for loops
@@ -513,7 +526,6 @@ contains
     real, dimension(nsites,2*nstates,2) :: LDOS      ! local density of states (LDOS(i,:) is LDOS of site i)
     real :: inner_prod_up, inner_prod_dn             ! inner products used when calculating weight of LDOS contributions (<Psi|PESdn_MBG> or <Psi|IPESdn_MBG>)
     
-    allocate(eigenvectors(nstates))
     call make_neighbours(nsites, neighbours)
     MBGvec=0.0
     grand_potential_ground = 0.0
@@ -626,7 +638,10 @@ contains
        end do
     end do
     k=1
-    deallocate(eigenvectors)
+    do i=1,nstates
+       Call eigenvectors(i)%delete
+    end do
+    
     do i=1,nsites
        do j = 1,2*nstates
           Energy(k) = LDOS(i,j,1)

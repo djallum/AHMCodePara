@@ -406,6 +406,7 @@ contains
     !if (my_id .eq. 0) CALL CorrectInputs( )
     
     do i = 1,systemn
+       print*, my_id, i
        if ( mod(real(i),0.1*systemn) == 0.0 ) then
           print*, int(i/real(systemn)*100), "%"
        end if
