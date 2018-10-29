@@ -140,6 +140,7 @@ contains
     write(Unum,*) "#Chemical Potential = ", ChemPot
     write(Unum,*) "#Dimensions = ", dim
     if ( Present(num_procs) ) then
+       write(Unum,*) "#Number of processes = ", num_procs
        write(Unum,*) "#Number of systems = ", num_procs*systemn
     else if ( .not. Present(num_procs) ) then
        write(Unum,*) "#Number of systems = ", systemn
