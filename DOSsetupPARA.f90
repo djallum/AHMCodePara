@@ -2,7 +2,7 @@ module DOSsetup
   USE Inputs
   USE Tools
   USE PreAnalysis
-  USE Diag, only: DiagCluster, PreSetUp
+  USE Diag, only: DiagCluster
   USE mpi
   implicit none
   SAVE
@@ -280,7 +280,6 @@ contains
        else if ( (weakL .eq. 0) .and. (weakR .eq. 0) ) then
           ClusterSize = 0
           ClusterStage = ClusterStage + 1
-          !Call PreSetUp(ClusterStage)
        else
           Print*, "weakL = weakR, but not 0 in system_DoS"
           print*, WeakBonds
@@ -406,7 +405,6 @@ contains
     !if (my_id .eq. 0) CALL CorrectInputs( )
     
     do i = 1,systemn
-       print*, my_id, i
        if ( mod(real(i),0.1*systemn) == 0.0 ) then
           print*, int(i/real(systemn)*100), "%"
        end if

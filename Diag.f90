@@ -30,7 +30,17 @@ module Diag
      real, allocatable :: comp(:)
    contains
      procedure :: delete => Clean_EigenV
-  end type Cell  
+  end type Cell
+
+  TYPE RealCell
+     real, allocatable :: HSUB(:,:)
+  end type RealCell
+  Type Hamiltonian
+     type(RealCell), dimension(:,:), allocatable :: HFULL
+   contains
+     procedure :: alloc => MakeHamiltonian
+  end type Hamiltonian
+  type(Hamiltonian) :: H_hat(ClusterMax)
   
 contains
   !************************************************************************************
@@ -40,10 +50,10 @@ contains
     class(SetUp), intent(inout) :: Oper
     integer, intent(in) :: i
 
-    allocate( Oper%fock_states(2,4**i),Oper%PES_down(i,4**i),Oper%PES_up(i,4**i), &
-         Oper%IPES_down(i,4**i),Oper%IPES_up(i,4**i),Oper%phase_PES_down(i,4**i), &
-         Oper%phase_PES_up(i,4**i),Oper%phase_IPES_down(i,4**i), &
-         Oper%phase_IPES_up(i,4**i),Oper%msize(0:i,0:i), Oper%mblock(0:i,0:i) )
+    allocate( Oper%fock_states(4**i,2),Oper%PES_down(4**i,i),Oper%PES_up(4**i,i), &
+         Oper%IPES_down(4**i,i),Oper%IPES_up(4**i,i),Oper%phase_PES_down(4**i,i), &
+         Oper%phase_PES_up(4**i,i),Oper%phase_IPES_down(4**i,i), &
+         Oper%phase_IPES_up(4**i,i),Oper%msize(0:i,0:i), Oper%mblock(0:i,0:i) )
     
     call num_sites(i)
     call transformations(i)
@@ -62,6 +72,28 @@ contains
    
 
   end subroutine Clean_EigenV 
+  !************************************************************************************
+  !************************************************************************************
+  subroutine MakeHamiltonian(H,t,nsites)
+    implicit none
+    class(Hamiltonian), intent(inout) :: H
+    integer, intent(in) :: nsites
+    integer, dimension(nsites,2) :: neighbours
+    real, intent(in) :: t
+    integer :: n_up,n_dn
+
+    
+    allocate(H%HFULL(0:nsites,0:nsites))
+    do n_up=0,nsites
+       do n_dn=0,nsites
+          allocate(H%HFULL(n_up,n_dn)%HSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn)))
+          CALL make_neighbours(nsites, neighbours)
+          CALL BuildOffDiag(n_up,n_dn,H%HFULL(n_up,n_dn)%HSUB,neighbours,t,nsites)
+       end do
+    end do
+    
+    
+  end subroutine MakeHamiltonian
   !************************************************************************************
   !************************************************************************************
   subroutine num_sites(ClusterSize)
@@ -136,8 +168,8 @@ contains
     do ne=0,max_electrons
        do j=1,tot_states_up
           do i=BlockIndex(ne), BlockIndex(ne) + nstates_up(ne) - 1
-             Ops(ClusterSize)%fock_states(1,istate) = states_order(i)
-             Ops(ClusterSize)%fock_states(2,istate) = states_order(j)
+             Ops(ClusterSize)%fock_states(istate,1) = states_order(i)
+             Ops(ClusterSize)%fock_states(istate,2) = states_order(j)
              istate = istate + 1
           end do
        end do
@@ -197,29 +229,29 @@ contains
     do position = 1,ClusterSize                                         ! loop over all the sites (make PES_up for PE from each site)
        do i=1,istate                                             ! loop over each state
           ne = 0
-          if (ibits(Ops(ClusterSize)%fock_states(1,i),position-1,1) == 1) then    ! if there is an electron on that site it can't be the result of PE
-             Ops(ClusterSize)%PES_up(position,i) = 0                             ! zero everything then because it's not possible
-             Ops(Clustersize)%phase_PES_up(position,i) = 0                       ! zero everything then because it's not possible
+          if (ibits(Ops(ClusterSize)%fock_states(i,1),position-1,1) == 1) then    ! if there is an electron on that site it can't be the result of PE
+             Ops(ClusterSize)%PES_up(i,position) = 0                             ! zero everything then because it's not possible
+             Ops(Clustersize)%phase_PES_up(i,position) = 0                       ! zero everything then because it's not possible
           else
              do isite=position,ClusterSize                                      ! loop over all sites greater then site of PE (count number of anti-commutations)
-                ne = ne + ibits(Ops(ClusterSize)%fock_states(1,i),isite-1,1)    ! count the number of up electrons it will have to commute with to be removed
+                ne = ne + ibits(Ops(ClusterSize)%fock_states(i,1),isite-1,1)    ! count the number of up electrons it will have to commute with to be removed
              end do
              do isite=position,ClusterSize
-                ne = ne + ibits(Ops(ClusterSize)%fock_states(2,i),isite-1,1)    ! count the number of dn electrons it will have to commute with to be removed
+                ne = ne + ibits(Ops(ClusterSize)%fock_states(i,2),isite-1,1)    ! count the number of dn electrons it will have to commute with to be removed
              end do
              if (MOD(ne,2) == 0) then 
-                Ops(ClusterSize)%phase_PES_up(position,i) = 1                   ! if it had to do even number of anti-commutations it is positive
+                Ops(ClusterSize)%phase_PES_up(i,position) = 1                   ! if it had to do even number of anti-commutations it is positive
              else
-                Ops(ClusterSize)%phase_PES_up(position,i) = -1                  ! if it had to do odd number of anti-commutations it is positive
+                Ops(ClusterSize)%phase_PES_up(i,position) = -1                  ! if it had to do odd number of anti-commutations it is positive
              end if
-             new_state(1) = ibset(Ops(ClusterSize)%fock_states(1,i),position-1)  ! add up electron to that site 
-             new_state(2) = Ops(ClusterSize)%fock_states(2,i)                    ! the down portion remains the same
+             new_state(1) = ibset(Ops(ClusterSize)%fock_states(i,1),position-1)  ! add up electron to that site 
+             new_state(2) = Ops(ClusterSize)%fock_states(i,2)                    ! the down portion remains the same
              do j=1,istate
-                if(Ops(ClusterSize)%fock_states(1,j) == new_state(1) .and. Ops(ClusterSize)%fock_states(2,j) == new_state(2)) then 
+                if(Ops(ClusterSize)%fock_states(j,1) == new_state(1) .and. Ops(ClusterSize)%fock_states(j,2) == new_state(2)) then 
                    new_index = j                              ! find the index of the new state by compairing it to the entire FS basis
                 end if
              end do
-             Ops(ClusterSize)%PES_up(position,i) = new_index                     ! record the state that will when PE will become state i
+             Ops(ClusterSize)%PES_up(i,position) = new_index                     ! record the state that will when PE will become state i
           end if
        end do
     end do
@@ -227,42 +259,42 @@ contains
     do position = 1,ClusterSize
        do i=1,istate
           ne = 0
-          if (ibits(Ops(ClusterSize)%fock_states(2,i),position-1,1) == 1) then    ! if there is an electron on that site it can't be the result of PE
-             Ops(ClusterSize)%PES_down(position,i) = 0                           ! zero everything then because it's not possible
-             Ops(ClusterSize)%phase_PES_down(position,i) = 0                     ! zero everything then because it's not possible
+          if (ibits(Ops(ClusterSize)%fock_states(i,2),position-1,1) == 1) then    ! if there is an electron on that site it can't be the result of PE
+             Ops(ClusterSize)%PES_down(i,position) = 0                           ! zero everything then because it's not possible
+             Ops(ClusterSize)%phase_PES_down(i,position) = 0                     ! zero everything then because it's not possible
           else
              do isite=position+1,ClusterSize                        ! +1 sicne the order is dn,up so wouldn't commute with the up electron on site=position
-                ne = ne + ibits(Ops(ClusterSize)%fock_states(1,i),isite-1,1)    ! count the number of up electrons it will have to commute with to be removed
+                ne = ne + ibits(Ops(ClusterSize)%fock_states(i,1),isite-1,1)    ! count the number of up electrons it will have to commute with to be removed
              end do
              do isite=position,ClusterSize
-                ne = ne + ibits(Ops(ClusterSize)%fock_states(2,i),isite-1,1)    ! count the number of dn electrons it will have to commute with to be removed
+                ne = ne + ibits(Ops(ClusterSize)%fock_states(i,2),isite-1,1)    ! count the number of dn electrons it will have to commute with to be removed
              end do
              if (MOD(ne,2) == 0) then 
-                Ops(ClusterSize)%phase_PES_down(position,i) = 1                 ! if it had to do even number of anti-commutations it is positive
+                Ops(ClusterSize)%phase_PES_down(i,position) = 1                 ! if it had to do even number of anti-commutations it is positive
              else
-                Ops(ClusterSize)%phase_PES_down(position,i) = -1
+                Ops(ClusterSize)%phase_PES_down(i,position) = -1
              end if
-             new_state(2) = ibset(Ops(ClusterSize)%fock_states(2,i),position-1)  ! add dn electron to that site 
-             new_state(1) = Ops(ClusterSize)%fock_states(1,i)                    ! the up portion remains the same
+             new_state(2) = ibset(Ops(ClusterSize)%fock_states(i,2),position-1)  ! add dn electron to that site 
+             new_state(1) = Ops(ClusterSize)%fock_states(i,1)                    ! the up portion remains the same
              do j=1,istate
-                if(Ops(ClusterSize)%fock_states(1,j) == new_state(1) .and. Ops(ClusterSize)%fock_states(2,j) == new_state(2)) then
+                if(Ops(ClusterSize)%fock_states(j,1) == new_state(1) .and. Ops(ClusterSize)%fock_states(j,2) == new_state(2)) then
                    new_index = j                               ! find the index of the new state by compairing it to the entire FS basis
                 end if
              end do
-             Ops(ClusterSize)%PES_down(position,i) = new_index                    ! record the state that will when PE will become state i
+             Ops(ClusterSize)%PES_down(i,position) = new_index                    ! record the state that will when PE will become state i
           end if
        end do
     end do
     !-------Find the IPES tables----------
     do j=1,ClusterSize 
        do i=1,istate
-          if (Ops(ClusterSize)%PES_down(j,i) /= 0) then
-             Ops(ClusterSize)%phase_IPES_down(j,Ops(ClusterSize)%PES_down(j,i)) = Ops(ClusterSize)%phase_PES_down(j,i)
-             Ops(ClusterSize)%IPES_down(j,Ops(ClusterSize)%PES_down(j,i)) = i
+          if (Ops(ClusterSize)%PES_down(i,j) /= 0) then
+             Ops(ClusterSize)%phase_IPES_down(Ops(ClusterSize)%PES_down(i,j),j) = Ops(ClusterSize)%phase_PES_down(i,j)
+             Ops(ClusterSize)%IPES_down(Ops(ClusterSize)%PES_down(i,j),j) = i
           end if
-          if (Ops(ClusterSize)%PES_up(j,i) /= 0) then
-             Ops(ClusterSize)%IPES_up(j,Ops(ClusterSize)%PES_up(j,i)) = i
-             Ops(ClusterSize)%phase_IPES_up(j,Ops(ClusterSize)%PES_up(j,i)) = Ops(ClusterSize)%phase_PES_up(j,i)
+          if (Ops(ClusterSize)%PES_up(i,j) /= 0) then
+             Ops(ClusterSize)%IPES_up(Ops(ClusterSize)%PES_up(i,j),j) = i
+             Ops(ClusterSize)%phase_IPES_up(Ops(ClusterSize)%PES_up(i,j),j) = Ops(ClusterSize)%phase_PES_up(i,j)
           end if
        end do
     end do
@@ -332,15 +364,15 @@ contains
   end subroutine matrix_sizes
   !************************************************************************************
   !************************************************************************************
-  subroutine BuildHSUB(n_up, n_dn, HSUB, neighbours, U, E, t, nsites, nstates)
+  subroutine BuildOffDiag(n_up,n_dn,HSUB,neighbours,t,nsites)
     implicit none
-    integer, intent(in) :: n_up,n_dn
-    real, dimension(:,:), intent(out) :: HSUB
-    integer, intent(in) :: nsites, nstates
-    integer, intent(in), dimension(:,:) :: neighbours
-    real, intent(in) :: U, E(nsites)
-    real, intent(in) :: t                    ! the hopping integral
+    integer, intent(in) :: n_up,n_dn, nsites
+    real, dimension(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn)), intent(out) :: HSUB
+    integer, intent(in), dimension(nsites,2) :: neighbours
+    real, intent(in) :: t
+
     integer :: istate, isite, i, j, y        ! counters for loops
+    integer :: high, low                     ! Highest and lowest state labels
     integer :: inbr                          ! site number of the neighbour
     integer :: new_state(2)                  ! new state after a hopping
     integer :: phase                         ! the number that keeps track of anti-commutations (+ or -)
@@ -348,18 +380,19 @@ contains
     integer :: trans_site(2)                 ! holds the site number of the starting and ending site of a hopping (needed to find number of electrons)
     integer :: new_index                     ! the column index of the new FS after the hopping
     integer :: state_index                   ! the row index of the old FS before the hopping
-    
+
     HSUB = 0.0
-    
-    do istate = Ops(nsites)%mblock(n_up,n_dn),Ops(nsites)%mblock(n_up,n_dn) + Ops(nsites)%msize(n_up,n_dn)-1  ! loop over all the states in each submatrix
+    low = Ops(nsites)%mblock(n_up,n_dn)
+    high = Ops(nsites)%mblock(n_up,n_dn) + Ops(nsites)%msize(n_up,n_dn) - 1
+    do istate = low,high  ! loop over all the states in each submatrix
        do isite = 1,nsites                                               ! loop over each site of the state
-          if (ibits(Ops(nsites)%fock_states(1,istate),isite-1,1) == 1) then         ! check if there is a up electron on that site
+          if (ibits(Ops(nsites)%fock_states(istate,1),isite-1,1) == 1) then         ! check if there is a up electron on that site
              do y=1,size(neighbours,2)                                 ! if so loop over all the sites that nieghbour it
-                new_state(1) = IBCLR(Ops(nsites)%fock_states(1,istate),isite-1)   ! remove the up electron from current site
+                new_state(1) = IBCLR(Ops(nsites)%fock_states(istate,1),isite-1)   ! remove the up electron from current site
                 inbr = neighbours(isite,y)                            ! this the site number of the neighbour
                 if (inbr .eq. 0) CYCLE                                ! A neighbour index of 0 implies there is no neighbour (enforces closed boundary conditions)
                 if (ibits(new_state(1),inbr-1,1) == 0) then           ! check if the neighbour site is empty (no up electron)
-                   new_state(2) = Ops(nsites)%fock_states(2,istate)              ! the state after the hopping has same down component
+                   new_state(2) = Ops(nsites)%fock_states(istate,2)              ! the state after the hopping has same down component
                    ne = 0                                            ! set the electron counter to zero (need to count them for anti-commutations)
                    trans_site(1) = inbr; trans_site(2) = isite       ! the site it the elelectron started at and finished at
                    do i=MINVAL(trans_site),MAXVAL(trans_site)-1
@@ -372,24 +405,30 @@ contains
                       phase = -1                                    ! if odd amount of electrons between then anticommutation combine to -1
                    end if
                    new_state(1) = ibset(new_state(1),inbr-1)         ! find the up component of the new fock state
-                   do j=1,nstates
-                      if(Ops(nsites)%fock_states(1,j) == new_state(1) .and. Ops(nsites)%fock_states(2,j) == new_state(2)) then
+                   !print*, "new", new_state(1), new_state(2), new_index
+                   do j=low,high
+                      !print*, j, Ops(nsites)%fock_states(j,1), new_state(1)
+                      !print*, j, Ops(nsites)%fock_states(j,2), new_state(2)
+                      !print*, ""
+                      if(Ops(nsites)%fock_states(j,1) == new_state(1) .and. Ops(nsites)%fock_states(j,2) == new_state(2)) then
                          new_index = j                             ! search through the fock states to find the index of the new FS
+                         !print*, j, new_index, Ops(nsites)%mblock(n_up,n_dn), "success"
                       end if
                    end do
                    state_index = istate + 1 - Ops(nsites)%mblock(n_up,n_dn)      ! find the row and column to add the 't' to the Hamiltonian matrix 
                    new_index = new_index + 1 - Ops(nsites)%mblock(n_up,n_dn)
+                   !print*, "new_index: ", new_index, OPS%mblock(n_up,n_dn), Ops(nsites)%msize(n_up,n_dn), size(hsub)
                    HSUB(state_index,new_index) = t*phase
                 end if
              end do
           end if
-          if (ibits(Ops(nsites)%fock_states(2,istate),isite-1,1) == 1) then         ! Repeat identical process for hoppping of down electrons
+          if (ibits(Ops(nsites)%fock_states(istate,2),isite-1,1) == 1) then         ! Repeat identical process for hoppping of down electrons
              do y=1,size(neighbours,2)
-                new_state(2) = IBCLR(Ops(nsites)%fock_states(2,istate),isite-1)
+                new_state(2) = IBCLR(Ops(nsites)%fock_states(istate,2),isite-1)
                 inbr = neighbours(isite,y)
                 if ( inbr .eq. 0 ) CYCLE
                 if (ibits(new_state(2),inbr-1,1) == 0) then
-                   new_state(1) = Ops(nsites)%fock_states(1,istate)
+                   new_state(1) = Ops(nsites)%fock_states(istate,1)
                    ne = 0
                    trans_site(1) = inbr; trans_site(2) = isite
                    do i=MINVAL(trans_site)+1,MAXVAL(trans_site)
@@ -402,8 +441,8 @@ contains
                       phase = -1
                    end if
                    new_state(2) = ibset(new_state(2),inbr-1)
-                   do j=1,nstates
-                      if(Ops(nsites)%fock_states(1,j) == new_state(1) .and. Ops(nsites)%fock_states(2,j) == new_state(2)) then
+                   do j=low,high
+                      if(Ops(nsites)%fock_states(j,1) == new_state(1) .and. Ops(nsites)%fock_states(j,2) == new_state(2)) then
                          new_index = j
                       end if
                    end do
@@ -415,11 +454,24 @@ contains
           end if
        end do
     end do
+  end subroutine BuildOffDiag
+  !************************************************************************************
+  !************************************************************************************
+  subroutine BuildHSUB(n_up, n_dn, HSUB, U, E, nsites)
+    implicit none
+    integer, intent(in) :: n_up,n_dn
+    real, dimension(:,:), intent(out) :: HSUB
+    integer, intent(in) :: nsites
+    real, intent(in) :: U, E(nsites)
+    integer :: istate, isite                 ! counters for loops
+    integer :: ne                            ! counts the number of electrons (used to calculate the phase)
+    
+    
     do istate = 1,Ops(nsites)%msize(n_up,n_dn)
        do isite=1,nsites                     ! loop over all the site of each state
           ne=0
-          ne = ne + IBITS(Ops(nsites)%fock_states(1,istate+Ops(nsites)%mblock(n_up,n_dn)-1),isite-1,1)  ! check if up electron on that site of that state
-          ne = ne + IBITS(Ops(nsites)%fock_states(2,istate+Ops(nsites)%mblock(n_up,n_dn)-1),isite-1,1)  ! check if down electron on that site of that state
+          ne = ne + IBITS(Ops(nsites)%fock_states(istate+Ops(nsites)%mblock(n_up,n_dn)-1,1),isite-1,1)  ! check if up electron on that site of that state
+          ne = ne + IBITS(Ops(nsites)%fock_states(istate+Ops(nsites)%mblock(n_up,n_dn)-1,2),isite-1,1)  ! check if down electron on that site of that state
           HSUB(istate,istate) = HSUB(istate,istate) + ne*E(isite)             ! add ne*(the site potential of that site)
           if (ne == 2) then 
              HSUB(istate,istate) = HSUB(istate,istate) + U                   ! if there is both an up and down electron add a U
@@ -459,8 +511,10 @@ contains
     real :: HSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn))
     real :: VSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn))
     real :: WSUB(Ops(nsites)%msize(n_up,n_dn))
+    HSUB = H_hat(nsites)%HFULL(n_up,n_dn)%HSUB
     
-    call BuildHSUB(n_up, n_dn, HSUB, neighbours, U, E, t, nsites, nstates)
+    call BuildHSUB(n_up, n_dn, HSUB, U, E, nsites)
+
     call ssyevr_lapack1(Ops(nsites)%msize(n_up,n_dn),HSUB,WSUB,VSUB)
     e_ground(n_up,n_dn) = WSUB(1) - mu*(n_up+n_dn)
     
@@ -483,7 +537,8 @@ contains
     do i=1,Ops(nsites)%msize(g_up,g_dn)
        allocate(eigenvectors(i+Ops(nsites)%mblock(g_up,g_dn)-1)%comp(1:Ops(nsites)%msize(g_up,g_dn)))
     end do
-    call BuildHSUB(g_up, g_dn, HSUB, neighbours, U, E, t, nsites, nstates)
+    HSUB = H_hat(nsites)%HFULL(g_up,g_dn)%HSUB
+    call BuildHSUB(g_up, g_dn, HSUB, U, E, nsites)
     call ssyevr_lapack(Ops(nsites)%msize(g_up,g_dn),HSUB,WSUB,VSUB)
     
     do i=1,Ops(nsites)%msize(g_up,g_dn)
@@ -521,15 +576,14 @@ contains
     integer :: groundloc(2)                      ! stores the location in array e_ground of minimum energy (this will find g_up, g_dn)
     integer :: location(1)                       ! stores the location in the grand_potential array of the lowest energy
     real, dimension(nstates) :: MBGvec           ! many-body ground state vector (MBG) written in fock basis (MBGvec(i) is coefficient of fock state "i")
-    real, dimension(nsites,nstates) :: PESdn_MBG, PESup_MBG   ! MBG after a down or up photo emmision (PE) respectively (PESdn_MBG(i,:) is  c_{i,dn}|Psi0> )
-    real, dimension(nsites,nstates) :: IPESdn_MBG, IPESup_MBG ! MBG after a down or up inverse photo emmision respectively (IPESdn_MBG(i,:) is  c^{dagger}_{i,dn}|Psi0> )
-    real, dimension(nsites,2*nstates,2) :: LDOS      ! local density of states (LDOS(i,:) is LDOS of site i)
+    real, dimension(nstates,nsites) :: PESdn_MBG, PESup_MBG   ! MBG after a down or up photo emmision (PE) respectively (PESdn_MBG(i,:) is  c_{i,dn}|Psi0> )
+    real, dimension(nstates,nsites) :: IPESdn_MBG, IPESup_MBG ! MBG after a down or up inverse photo emmision respectively (IPESdn_MBG(i,:) is  c^{dagger}_{i,dn}|Psi0> )
     real :: inner_prod_up, inner_prod_dn             ! inner products used when calculating weight of LDOS contributions (<Psi|PESdn_MBG> or <Psi|IPESdn_MBG>)
     
     call make_neighbours(nsites, neighbours)
     MBGvec=0.0
     grand_potential_ground = 0.0
-    LDOS = 0.0
+
     PESdn_MBG=0.0; PESup_MBG=0.0; IPESdn_MBG=0.0; IPESup_MBG=0.0
     grand_potential = 0
     e_ground = 0
@@ -576,32 +630,32 @@ contains
     
     do j=1,nsites
        do i=1,nstates
-          if (Ops(nsites)%PES_up(j,i)==0) then
-             PESup_MBG(j,i) = 0.0
+          if (Ops(nsites)%PES_up(i,j)==0) then
+             PESup_MBG(i,j) = 0.0
           else 
-             PESup_MBG(j,i) = MBGvec(Ops(nsites)%PES_up(j,i))*Ops(nsites)%phase_PES_up(j,i)
+             PESup_MBG(i,j) = MBGvec(Ops(nsites)%PES_up(i,j))*Ops(nsites)%phase_PES_up(i,j)
           end if
-          if (Ops(nsites)%PES_down(j,i)==0) then
-             PESdn_MBG(j,i) = 0.0
+          if (Ops(nsites)%PES_down(i,j)==0) then
+             PESdn_MBG(i,j) = 0.0
           else 
-             PESdn_MBG(j,i) = MBGvec(Ops(nsites)%PES_down(j,i))*Ops(nsites)%phase_PES_down(j,i)
+             PESdn_MBG(i,j) = MBGvec(Ops(nsites)%PES_down(i,j))*Ops(nsites)%phase_PES_down(i,j)
           end if
-          if (Ops(nsites)%IPES_up(j,i)==0) then
-             IPESup_MBG(j,i) = 0.0
+          if (Ops(nsites)%IPES_up(i,j)==0) then
+             IPESup_MBG(i,j) = 0.0
           else 
-             IPESup_MBG(j,i) = MBGvec(Ops(nsites)%IPES_up(j,i))*Ops(nsites)%phase_IPES_up(j,i)
+             IPESup_MBG(i,j) = MBGvec(Ops(nsites)%IPES_up(i,j))*Ops(nsites)%phase_IPES_up(i,j)
           end if
-          if (Ops(nsites)%IPES_down(j,i)==0) then
-             IPESdn_MBG(j,i) = 0.0
+          if (Ops(nsites)%IPES_down(i,j)==0) then
+             IPESdn_MBG(i,j) = 0.0
           else 
-             IPESdn_MBG(j,i) = MBGvec(Ops(nsites)%IPES_down(j,i))*Ops(nsites)%phase_IPES_down(j,i)
+             IPESdn_MBG(i,j) = MBGvec(Ops(nsites)%IPES_down(i,j))*Ops(nsites)%phase_IPES_down(i,j)
           end if
        end do
     end do
     
     
     !---------------------------calculate the LDOS for all the sites--------------------------------------------------
-    
+    k=1
     do n_up=min_up,max_up                ! loop over all possible submatrices
        do n_dn=min_dn,max_dn
           if (n_up == min_up .and. n_dn == min_dn .and. g_up /= 0 .and. g_dn /= 0) CYCLE             ! not allowed (two electrons less then MBG)
@@ -616,42 +670,31 @@ contains
                 inner_prod_up = 0
                 inner_prod_dn = 0
                 if (n_up == min_up) then
-                   inner_prod_up = (dot_product(PESup_MBG(j,low:high),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
+                   inner_prod_up = (dot_product(PESup_MBG(low:high,j),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
                 end if
                 if (n_dn == min_dn) then
-                   inner_prod_dn =  (dot_product(PESdn_MBG(j,low:high),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
+                   inner_prod_dn =  (dot_product(PESdn_MBG(low:high,j),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
                 end if
-                LDOS(j,i,1) = grand_potential_ground - grand_potential(i)              ! location of the peak
-                LDOS(j,i,2) = (inner_prod_up + inner_prod_dn)*0.5                      ! weight of the peak (average up and down spin components)
+                Energy(k) = grand_potential_ground - grand_potential(i)              ! location of the peak
+                Weight(k) = (inner_prod_up + inner_prod_dn)*0.5                      ! weight of the peak (average up and down spin components)
+                k=k+1
                 inner_prod_up = 0
                 inner_prod_dn = 0
                 if (n_up == max_up) then
-                   inner_prod_up = (dot_product(IPESup_MBG(j,low:high),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
+                   inner_prod_up = (dot_product(IPESup_MBG(low:high,j),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
                 end if
                 if (n_dn == max_dn) then
-                   inner_prod_dn =  (dot_product(IPESdn_MBG(j,low:high),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
+                   inner_prod_dn =  (dot_product(IPESdn_MBG(low:high,j),eigenvectors(i)%comp(1:Ops(nsites)%msize(n_up,n_dn))))**2
                 end if
-                LDOS(j,i+nstates,1) = grand_potential(i) - grand_potential_ground       ! location of the peak
-                LDOS(j,i+nstates,2) = (inner_prod_up + inner_prod_dn)*0.5               ! weight of the peak (average up and down spin components)
+                Energy(k) = grand_potential(i) - grand_potential_ground       ! location of the peak
+                Weight(k) = (inner_prod_up + inner_prod_dn)*0.5               ! weight of the peak (average up and down spin components)
+                k=k+1
              end do
           end do
        end do
     end do
-    k=1
     do i=1,nstates
        Call eigenvectors(i)%delete
-    end do
-    
-    do i=1,nsites
-       do j = 1,2*nstates
-          Energy(k) = LDOS(i,j,1)
-          Weight(k) = LDOS(i,j,2)
-          If ( Weight(k) .ne. Weight(k) ) then
-             print*, k
-          end If
-          
-          k = k + 1
-       end do
     end do
     
     
