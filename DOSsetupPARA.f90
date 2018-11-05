@@ -390,6 +390,7 @@ contains
     !DOS = 0.0
     my_DOS = 0.0
     my_droppedDOS = 0.0
+    my_SitesMissed = 0
     Potential = 0.0
     PrunedBonds = 0
     
@@ -429,7 +430,7 @@ contains
     allocate(DOS(bins,DOS_MaxCluster), DroppedDos(DOS_MaxCluster))
     DOS = 0.0
     DroppedDos = 0.0
-    
+    SitesMissed = 0
              
     
     do i=1,DOS_MaxCluster
