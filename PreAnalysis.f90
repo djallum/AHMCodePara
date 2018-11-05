@@ -63,7 +63,7 @@ contains
     print*, "Distribution of \Delta\epsilon: ", CalcEnergyDiff
 
  
-    
+    return    
     do while ( .true. )
        print*, "Is this correct? (Y/N)"
        read(*,*) Ans
@@ -117,7 +117,6 @@ contains
     ! boundary conditions
     
     !---------------------------Variable Allocations-----------------------------
-    
     
     !---------------------------Initializing-------------------------------------
     RandomNumber = 0

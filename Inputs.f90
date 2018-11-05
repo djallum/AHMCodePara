@@ -64,7 +64,8 @@ module inputs
   real, allocatable :: DOS(:,:), DroppedDos(:) !DOS(DOS_MaxCluster,bins) ;; DroppedDos(DOS_MaxCluster)
   real, parameter :: DOS_EMax = 5, DOS_EMin = -DOS_EMax
   integer :: PrunedBonds 
-  integer :: StrongestBondsPruned 
+  integer :: StrongestBondsPruned
+  integer :: SitesMissed 
   real Potential(bins)
   real, parameter :: POT_EMax = Delta/2, POT_EMin = -Pot_EMax
   real, parameter :: Bond_EMax = 20, Bond_EMin = -20

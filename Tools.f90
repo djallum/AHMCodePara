@@ -213,7 +213,6 @@ contains
     integer, intent(in) :: Start                               ! The element in which to start removing the array
     integer i, j                                               ! Looping integer
     
-
     allocate(tmp_arr(size(array) - numRemove))
 
     tmp_arr(:) = 0

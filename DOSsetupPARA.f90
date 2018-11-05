@@ -231,7 +231,7 @@ contains
   ! renormalized
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
-  subroutine System_DoS( my_DOS, my_droppedDOS, SitePotential, Hopping, Bonds, WeakBonds, SitesIgnored )
+  subroutine System_DoS( my_DOS, my_droppedDOS, my_SitesMissed, SitePotential, Hopping, Bonds, WeakBonds, SitesIgnored )
     implicit none
 
                 !---------------------------Inputs-------------------------------------------
@@ -244,6 +244,7 @@ contains
     integer, intent(inout) :: SitesIgnored
     real, dimension(bins,DOS_MaxCluster), intent(inout) :: my_DOS
     real, dimension(DOS_MaxCluster), intent(inout) :: my_droppedDOS
+    integer, intent(inout) :: my_SitesMissed
     
 
                 !---------------------------Programming Variables----------------------------
@@ -355,6 +356,7 @@ contains
     end do system
     
     ClusterSize = dim - SitesRemoved
+    my_SitesMissed = my_SitesMissed + ClusterSize
     if ( ClusterSize .le. ClusterMax ) then
        !CALL PreSetUp(ClusterSize)
        weakL = WeakBonds(1); weakR = WeakBonds(1)
@@ -383,7 +385,7 @@ contains
     real :: start, finish, TIME
     integer :: my_id, ierr, num_procs
     real :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
-
+    integer :: my_SitesMissed
  
     !DOS = 0.0
     my_DOS = 0.0
@@ -419,7 +421,7 @@ contains
           deallocate(SitePotential,Hopping,Bonds,WeakBonds)
           CYCLE
        end if
-       CALL system_Dos( my_DOS, my_droppedDOS, SitePotential, Hopping, Bonds, WeakBonds, SitesIgnored )
+       CALL system_Dos( my_DOS, my_droppedDOS, My_SitesMissedSitePotential, Hopping, Bonds, WeakBonds, SitesIgnored )
        deallocate(SitePotential, Hopping, Bonds, WeakBonds)
     end do
     CALL mpi_Barrier(MPI_COMM_WORLD, ierr)
@@ -427,18 +429,6 @@ contains
     allocate(DOS(bins,DOS_MaxCluster), DroppedDos(DOS_MaxCluster))
     DOS = 0.0
     DroppedDos = 0.0
-    do i=0,num_procs-1
-       if (my_id .eq. i) then
-          do j=1,bins
-             do k=1,ClusterMax
-                !print*, k, i
-                if (my_DOS(j,i) .ne. my_DOS(j,i)) then
-                   !print*, "My_DOS NAN", k, i
-                end if
-             end do
-          end do
-       end if
-    end do
     
              
     
@@ -446,6 +436,7 @@ contains
        CALL mpi_reduce(my_DOS(:,i), DOS(:,i), bins, mpi_real, mpi_sum, 0, mpi_comm_world, ierr) 
     end do
     CALL mpi_reduce(my_droppedDOS(:), DroppedDos(:), DOS_MaxCluster, mpi_real, mpi_sum, 0, mpi_comm_world, ierr)
+    CALL mpi_reduce(my_SitesMissed, SitesMissed, 1, mpi_integer, mpi_sum, 0, mpi_comm_world, ierr)
 
     if ( my_id .ne. 0 ) deallocate(DOS, DroppedDos)
        
@@ -537,7 +528,7 @@ contains
        do i=1,ClusterMax
           CALL OpenFile(100+i, "DOS_"//trim(str(i))//"Site_", "Density of States", "Energy", "Density of States", num_procs )
           write(100+i,*) "#Cluster Size included: ", i
-          write(100+i,*) "#Fraction of the DOS from this cluster size: ", (Sum(DOS(:,i))+DroppedDos(i))/totalDOSweight
+          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/(dim*systemn*num_procs)
           write(100+i,*) "#Time (s) = ", TIME
           write(100+i,*) "#This is not a gradient DOS, part", i, "of", ClusterMax
           CALL PrintData(100+i, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,i), DroppedDos(i) )
@@ -546,14 +537,16 @@ contains
     else if ( DOS_MaxCluster .eq. 1 ) then
        CALL OpenFile(100, "DOS", "Density of States", "Energy", "Density of States", num_procs )
        write(100,*) "#Maximum cluster Size included: ", ClusterMax
+       write(100,*) "#Fraction of sites missed: ", SitesMissed/(dim*systemn*num_procs)
        write(100,*) "#Time (s) = ", TIME
-       write(100+i,*) "#This is not a gradient DOS"
+       write(100,*) "#This is not a gradient DOS"
        CALL PrintData(100, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,1), DroppedDos(1))
        Close(100)
     else if ( DOS_MaxCluster .eq. ClusterMax ) then
               do i=1,ClusterMax
           CALL OpenFile(100+i, "DOSInc"//trim(str(i))//"_", "Density of States", "Energy", "Density of States", num_procs )
           write(100+i,*) "#Maximum cluster Size included: ", i
+          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/(dim*systemn*num_procs)
           write(100+i,*) "#Time (s) = ", TIME
           write(100+i,*) "#This is a gradient DOS, part", i, "of", ClusterMax
 
