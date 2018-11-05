@@ -8,7 +8,7 @@ module DOSsetup
   SAVE
 
 
-  !This version is redesigned to allow for MPI
+   !This version is redesigned to allow for MPI
   !created: 180728; last edited: 180728
   !So far: added my_* variables to Full_DOS and system_DOS and getdos routines.
   ! Added an mpi_reduce statement, init and finalize.
