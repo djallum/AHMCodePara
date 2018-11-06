@@ -403,9 +403,10 @@ contains
     CALL mpi_init(ierr)
     CALL mpi_comm_rank(MPI_COMM_WORLD,my_id,ierr)
     CALL mpi_comm_size(MPI_COMM_WORLD,num_procs,ierr)
+   
 
     CALL init_random_seed(my_id)
-    !if (my_id .eq. 0) CALL CorrectInputs( )
+    if (my_id .eq. 0) CALL CorrectInputs( )
     
     do i = 1,systemn
        if ( mod(real(i),0.1*systemn) == 0.0 ) then
@@ -422,7 +423,7 @@ contains
           deallocate(SitePotential,Hopping,Bonds,WeakBonds)
           CYCLE
        end if
-       CALL system_Dos( my_DOS, my_droppedDOS, My_SitesMissedSitePotential, Hopping, Bonds, WeakBonds, SitesIgnored )
+       CALL system_Dos( my_DOS, my_droppedDOS, My_SitesMissed, SitePotential, Hopping, Bonds, WeakBonds, SitesIgnored )
        deallocate(SitePotential, Hopping, Bonds, WeakBonds)
     end do
     CALL mpi_Barrier(MPI_COMM_WORLD, ierr)
