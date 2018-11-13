@@ -132,8 +132,8 @@ contains
     write(Unum,*) "#Disorder Strength = ", DELTA
     write(Unum,*) "#Bond Cutoff = ", bond_cutoff
     write(Unum,*) "#Pruned bonds cutoff = ", prune_cutoff
-    write(Unum,*) "#Fraction of n.n. sites in which at least one orbital pair ignored = ", &
-         "#", real(PrunedBonds)/real(dim*systemn)
+    write(Unum,*) "#Fraction of n.n. sites in which at least one orbital pair ignored = "
+    write(Unum,*) "#", real(PrunedBonds)/real(dim*systemn)
     write(Unum,*) "#Fraction of prunings that are useful = ", real(StrongestBondsPruned)/real(PrunedBonds)
     write(Unum,*) "#Hopping = ", hop
     write(Unum,*) "#Interaction strength = ", uSite
