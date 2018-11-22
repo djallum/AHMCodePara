@@ -418,7 +418,7 @@ contains
        allocate(SitePotential(dim),Hopping(dim),Bonds(dim))
        call create_AHM( SitePotential, Hopping, Bonds )
        call CalcWeakBonds( Bonds, WeakBonds, SitesRemoved )
-       if ( WeakBonds(1) .eq. 0 ) then
+       if ( (WeakBonds(1) .eq. 0) .and. (dim .gt. ClusterMax) ) then
           !print*, "All Bonds Strong"
           deallocate(SitePotential,Hopping,Bonds,WeakBonds)
           CYCLE
