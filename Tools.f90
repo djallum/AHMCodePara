@@ -58,7 +58,7 @@ contains
 
        do Loop1 = 1,size(Data) 
           if ( ( Data(Loop1) .lt. Min ) .or. ( Data(Loop1) .gt. Max ) ) then
-             Dropped = Dropped + Weights(Loop1)
+             Dropped = Dropped + 1
           else             
              Loop2 = FLOOR(bins*(Data(Loop1) - Min)/(Max - Min) + 1)
              if ( (Loop2 .gt. bins) .or. (Loop2 .lt. 1) ) CYCLE
