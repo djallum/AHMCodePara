@@ -354,9 +354,10 @@ contains
        
        
     end do system
-    
+    print*, "FDFSDF"    
     ClusterSize = dim - SitesRemoved
     my_SitesMissed = my_SitesMissed + ClusterSize
+    print*, my_SitesMissed
     if ( ClusterSize .le. ClusterMax ) then
        !CALL PreSetUp(ClusterSize)
        weakL = WeakBonds(1); weakR = WeakBonds(1)
@@ -530,7 +531,7 @@ contains
        do i=1,ClusterMax
           CALL OpenFile(100+i, "DOS_"//trim(str(i))//"Site_", "Density of States", "Energy", "Density of States", num_procs )
           write(100+i,*) "#Cluster Size included: ", i
-          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/(dim*systemn*num_procs)
+          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
           write(100+i,*) "#Time (s) = ", TIME
           write(100+i,*) "#This is not a gradient DOS, part", i, "of", ClusterMax
           CALL PrintData(100+i, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,i), DroppedDos(i) )
@@ -539,7 +540,7 @@ contains
     else if ( DOS_MaxCluster .eq. 1 ) then
        CALL OpenFile(100, "DOS", "Density of States", "Energy", "Density of States", num_procs )
        write(100,*) "#Maximum cluster Size included: ", ClusterMax
-       write(100,*) "#Fraction of sites missed: ", SitesMissed/(dim*systemn*num_procs)
+       write(100,*) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
        write(100,*) "#Time (s) = ", TIME
        write(100,*) "#This is not a gradient DOS"
        CALL PrintData(100, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,1), DroppedDos(1))
@@ -548,7 +549,7 @@ contains
               do i=1,ClusterMax
           CALL OpenFile(100+i, "DOSInc"//trim(str(i))//"_", "Density of States", "Energy", "Density of States", num_procs )
           write(100+i,*) "#Maximum cluster Size included: ", i
-          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/(dim*systemn*num_procs)
+          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
           write(100+i,*) "#Time (s) = ", TIME
           write(100+i,*) "#This is a gradient DOS, part", i, "of", ClusterMax
 
