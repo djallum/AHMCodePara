@@ -354,10 +354,8 @@ contains
        
        
     end do system
-    print*, "FDFSDF"    
     ClusterSize = dim - SitesRemoved
     my_SitesMissed = my_SitesMissed + ClusterSize
-    print*, my_SitesMissed
     if ( ClusterSize .le. ClusterMax ) then
        !CALL PreSetUp(ClusterSize)
        weakL = WeakBonds(1); weakR = WeakBonds(1)
