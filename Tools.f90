@@ -24,12 +24,12 @@ contains
   
   subroutine Bin_Data( HistoData, Data, Weights, Dropped, Max, Min )
     implicit none
-    real, dimension(:), intent(in) :: Data
-    real, dimension(:), Optional, intent(in) :: Weights
-    real, intent(inout) :: HistoData(bins)
+    real(dp), dimension(:), intent(in) :: Data
+    real(dp), dimension(:), Optional, intent(in) :: Weights
+    real(dp), intent(inout) :: HistoData(bins)
     real, intent(in) :: Max
     real, intent(in) :: Min
-    real, optional, intent(inout) :: Dropped
+    real(dp), optional, intent(inout) :: Dropped
     integer Loop1, Loop2 !Loop integers
  
     ! since both Dropped and Weights are optional there are 2^2 different versions of this subroutine.
@@ -121,30 +121,35 @@ contains
     character(len=*), intent(in) :: Name, Contents, Column1, Column2
     integer, intent(in), optional :: num_procs
     character(len=25) :: filename
+    character(len=8) :: FormatP, FormatB
     filename = Name
     filename = FileNamer(filename)
     open (unit = Unum, file = "output/"//trim(filename)//"" ,status ='unknown' )
+
+    FormatP = '(A,F6.1)'
+    FormatB = '(A,F6.2)'
     
-    
-    write(Unum,*) "#This file contains the following data type for the ensemble: ", Trim(Contents)
-    write(Unum,*) "#First column is: ", Trim(Column1)
-    write(Unum,*) "#Second column is: ", Trim(Column2)
-    write(Unum,*) "#Disorder Strength = ", DELTA
-    write(Unum,*) "#Bond Cutoff = ", bond_cutoff
-    write(Unum,*) "#Pruned bonds cutoff = ", prune_cutoff
-    write(Unum,*) "#Fraction of n.n. sites in which at least one orbital pair ignored = "
-    write(Unum,*) "#", real(PrunedBonds)/real(dim*systemn)
-    write(Unum,*) "#Fraction of prunings that are useful = ", real(StrongestBondsPruned)/real(PrunedBonds)
-    write(Unum,*) "#Hopping = ", hop
-    write(Unum,*) "#Interaction strength = ", uSite
-    write(Unum,*) "#Chemical Potential = ", ChemPot
-    write(Unum,*) "#Dimensions = ", dim
+    write(Unum,'(A,A)') "#This file contains the following data type for the ensemble: ", Trim(Contents)
+    write(Unum,'(A,A)') "#First column is: ", Trim(Column1)
+    write(Unum,'(A,A)') "#Second column is: ", Trim(Column2)
+    write(Unum,FormatP) "#Disorder Strength = ", DELTA
+    write(Unum,FormatB) "#Bond Cutoff = ", bond_cutoff
+    write(Unum,FormatB) "#Pruned bonds cutoff = ", prune_cutoff
+    write(Unum,'(A)') "#Fraction of n.n. sites in which at least one orbital pair ignored = "
+    write(Unum,'(A,F6.3)') "#", real(PrunedBonds)/real(dim*systemn)
+    write(Unum,'(A,F6.3)') "#Fraction of prunings that are useful = ", real(StrongestBondsPruned)/real(PrunedBonds)
+    write(Unum,FormatP) "#Hopping = ", hop
+    write(Unum,FormatP) "#Interaction strength = ", uSite
+    write(Unum,FormatP) "#Chemical Potential = ", ChemPot
+    write(Unum,'(A,I4)') "#Dimensions = ", dim
     if ( Present(num_procs) ) then
-       write(Unum,*) "#Number of processes = ", num_procs
-       write(Unum,*) "#Number of systems = ", num_procs*systemn
+       write(Unum,'(A,I4)') "#Number of processes = ", num_procs
+       write(Unum,'(A,I10)') "#Number of systems = ", num_procs*systemn
     else if ( .not. Present(num_procs) ) then
-       write(Unum,*) "#Number of systems = ", systemn
+       write(Unum,'(A,I10)') "#Number of systems = ", systemn
     end if
+
+ 
     
 
   end subroutine OpenFile
@@ -170,9 +175,9 @@ contains
     implicit none
     integer, intent(in) :: Unum, BinNum
     character(len=*), intent(in) :: Form
-    real, intent(in), dimension(:) :: Data
+    real(dp), intent(in), dimension(:) :: Data
     real, intent(in) :: Min, Max
-    real, optional, intent(in) :: Dropped
+    real(dp), optional, intent(in) :: Dropped
     real :: BinWidth ! Width of bins for normalization
     integer :: Loop1 ! Loop integer for writing to file
 
@@ -180,7 +185,7 @@ contains
     If ( Present(Dropped) ) then
        BinWidth = (Max - Min)/real(BinNum)
        do Loop1=1,BinNum
-          write(Unum,( Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( (Sum(Data) + Dropped) * BinWidth )
+          write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( (Sum(Data) + Dropped) * BinWidth )
        end do
     else
        !If not present this is used. Difference is minor but not dividing by Dropped or the sum of data.
@@ -207,15 +212,15 @@ contains
   !     Start : Integer. The first element to remove from array
 
   subroutine resize_array(array, numRemove, Start)
-    real, dimension(:), allocatable :: tmp_arr
-    real, dimension(:), allocatable, intent(inout) :: array
+    real(dp), dimension(:), allocatable :: tmp_arr
+    real(dp), dimension(:), allocatable, intent(inout) :: array
     integer, intent(in) :: numRemove                           ! Number of elements to remove from 'array'
     integer, intent(in) :: Start                               ! The element in which to start removing the array
     integer i, j                                               ! Looping integer
     
     allocate(tmp_arr(size(array) - numRemove))
 
-    tmp_arr(:) = 0
+    tmp_arr(:) = 0.d0
 
     j=1
 
@@ -264,12 +269,12 @@ contains
 
     ! Inputs
     integer, intent(in) :: sitesremoved
-    real, dimension(dim-sitesremoved), intent(in) :: SitePotential
+    real(dp), dimension(dim-sitesremoved), intent(in) :: SitePotential
     integer, intent(in) :: weakL, weakR
     integer, intent(in) :: ClusterSize
 
     ! Outputs
-    real, dimension(ClusterSize), intent(out) :: Sites
+    real(dp), dimension(ClusterSize), intent(out) :: Sites
 
     ! Other
     integer :: EndSite

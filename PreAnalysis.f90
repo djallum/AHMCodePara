@@ -107,11 +107,11 @@ contains
     implicit none
     
     !---------------------------Outputs------------------------------------------
-    real, dimension(dim), intent(out) :: SitePotential, Hopping, Bonds
-    real, dimension(dim), optional, intent(out) :: EDiff
+    real(dp), dimension(dim), intent(out) :: SitePotential, Hopping, Bonds
+    real(dp), dimension(dim), optional, intent(out) :: EDiff
     
     !---------------------------Coding Tools-------------------------------------
-    real RandomNumber                                    ! random number for site potential calculation
+    real(dp) RandomNumber                                    ! random number for site potential calculation
     integer loop1                                        ! loop integer 
     integer IndexOfNeighbour                             ! this stores the site number of the right neighbour site in a bond. Used for
     ! boundary conditions
@@ -120,9 +120,9 @@ contains
     
     !---------------------------Initializing-------------------------------------
     RandomNumber = 0
-    Hopping(1:dim) = 0 
-    SitePotential(1:dim) = 0
-    Bonds(1:dim) = 0
+    Hopping(1:dim) = 0.d0 
+    SitePotential(1:dim) = 0.d0
+    Bonds(1:dim) = 0.d0
 
                 !---------------------------Calculate Site Potentials/Hopping Amplitudes-----
     !This loop uses the RNG to determine the site potentials and initializes all the hopping potentials as the same.
@@ -162,19 +162,19 @@ contains
   subroutine Strongest_Bond( Bonds, SitePotential, Hopping, LeftNbr, RightNbr, EDiff )
     implicit none
                 !---------------------------Output-------------------------------------------
-    real, dimension(:), intent(out) :: Bonds
-    real, dimension(:), optional, intent(out) :: EDiff
+    real(dp), dimension(:), intent(out) :: Bonds
+    real(dp), dimension(:), optional, intent(out) :: EDiff
 
                 !---------------------------Inputs-------------------------------------------
-    real, dimension(:), intent(in) :: SitePotential
-    real, dimension(:), intent(in) :: Hopping
+    real(dp), dimension(:), intent(in) :: SitePotential
+    real(dp), dimension(:), intent(in) :: Hopping
     integer, intent(in) :: LeftNbr                       ! Site label of the left neighbour site
     integer, intent(in) :: RightNbr                      ! Site label of the right neighbour site
 
                 !---------------------------Programming Tools--------------------------------
-    real ABond, HBond1, HBond2                           ! ABond: Anderson bond; HBond1: Hubbard bond with right neighbour UHO
+    real(dp) :: ABond, HBond1, HBond2                           ! ABond: Anderson bond; HBond1: Hubbard bond with right neighbour UHO
                                                          ! HBond2: Hubbard bond with the left neighbour UHO
-    real AAvg, HAvg, UAvg                                ! Average strength of LHOs (AAvg), of UHOs (UAvg) and of any LHO-UHO pair (HAvg)
+    real(dp) :: AAvg, HAvg, UAvg                                ! Average strength of LHOs (AAvg), of UHOs (UAvg) and of any LHO-UHO pair (HAvg)
     logical Pruned
 
     !---------------------------Calculate the three possible bond strengths------
@@ -240,13 +240,13 @@ contains
 
   subroutine PruningStats( AAvg, HAvg, UAvg, ABond, HBond1, HBond2 )
     implicit none
-    real, intent(inout) :: ABond, HBond1, HBond2
-    real, intent(in) :: AAvg, HAvg, UAvg
-    real :: Bonds(3), Temp_Bonds(3)
+    real(dp), intent(inout) :: ABond, HBond1, HBond2
+    real(dp), intent(in) :: AAvg, HAvg, UAvg
+    real(dp) :: Bonds(3), Temp_Bonds(3)
     logical :: Pruned(3), IsOnePruned
     integer :: Strongest_index
     integer :: i !Looping
-    real :: NextStrong
+    real(dp) :: NextStrong
     
     Bonds(1) = ABond; Bonds(2) = HBond1; Bonds(3) = HBond2
     Pruned(1) = .false.; Pruned(2) = .false.; Pruned(3) = .false.
@@ -324,7 +324,7 @@ contains
     integer, dimension(:), allocatable, intent(out) :: WeakBonds
 
                 !---------------------------Inputs-------------------------------------------
-    real, dimension(:), intent(in) :: Bonds
+    real(dp), dimension(:), intent(in) :: Bonds
     integer, optional, intent(in) :: SitesRemoved
 
                 !---------------------------Programming Variables----------------------------
@@ -403,18 +403,18 @@ contains
   subroutine AnalyzeClusters( )
     implicit none
     integer loop1
-    real, dimension(dim) :: SitePotential, Hopping, Bonds
-    real, dimension(dim) :: ClusterCount, EDiff
+    real(dp), dimension(dim) :: SitePotential, Hopping, Bonds
+    real(dp), dimension(dim) :: ClusterCount, EDiff
     integer, dimension(:), allocatable :: WeakBonds
-    real, dimension(bins) :: HistoBonds, HistoEDiff
+    real(dp), dimension(bins) :: HistoBonds, HistoEDiff
     
 
-    ClusterCount = 0.0
-    SitePotential = 0.0
-    Hopping = 0.0
-    Bonds = 0.0
-    HistoBonds = 0.0
-    HistoEDiff = 0.0
+    ClusterCount = 0.d0
+    SitePotential = 0.d0
+    Hopping = 0.d0
+    Bonds = 0.d0
+    HistoBonds = 0.d0
+    HistoEDiff = 0.d0
     
     do loop1=1,systemn
 
@@ -459,7 +459,7 @@ contains
     implicit none
     integer loop1, loop2!loop integer
     integer, dimension(:), intent(in) :: WeakBonds !An array where each element is 0 or 1. 1 means weak bond, 0 means strong bond
-    real, intent(out) :: ClusterCount(dim) !Counts the number of clusters recorded for each cluster size
+    real(dp), intent(out) :: ClusterCount(dim) !Counts the number of clusters recorded for each cluster size
     integer ClusterSize !contains the size of the current cluster
     integer LbondLabel, RbondLabel !The number that labels the left and right weak bonds that neighbour each cluster
 

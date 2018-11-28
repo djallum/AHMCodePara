@@ -18,9 +18,9 @@ contains
 
   subroutine GetPotential( SitePotential, weakL, weakR, Cl_Size, SitesRemoved )
     implicit none
-    real, dimension(:), intent(in) :: SitePotential
+    real(dp), dimension(:), intent(in) :: SitePotential
     integer, intent(in) :: Cl_Size, weakL, weakR, SitesRemoved
-    real, dimension(Cl_Size) :: Sites
+    real(dp), dimension(Cl_Size) :: Sites
     integer EndSite
     if ( weakL .gt. weakR) then
        EndSite = (dim - sitesremoved) - weakL
@@ -47,22 +47,22 @@ contains
     implicit none
     
                 !---------------------------Inputs-------------------------------------------
-    real, dimension(:), intent(in) :: SitePotential
+    real(dp), dimension(:), intent(in) :: SitePotential
     integer, intent(in) :: ClusterSize
     integer, intent(in) :: weakL, weakR
 
                 !---------------------------Outputs------------------------------------------
-    real, dimension(:), allocatable :: Energy
-    real, dimension(:), allocatable :: Weight
-    real, intent(out) :: Teff
+    real(dp), dimension(:), allocatable :: Energy
+    real(dp), dimension(:), allocatable :: Weight
+    real(dp), intent(out) :: Teff
     integer, intent(inout) :: SitesRemoved
     integer, intent(inout) :: SitesIgnored
-    real, intent(inout) :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
+    real(dp), intent(inout) :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
 
                 !---------------------------Programming Variables----------------------------
     real w1, w2, w3                                      ! The three possible grand potentials for a single site cluster
     integer Llabel                                       ! Must change weakL, relabel it so weakL doesn't have to have intent:inout
-    real, dimension(ClusterSize) :: Sites
+    real(dp), dimension(ClusterSize) :: Sites
     integer :: EndSite
     integer :: i, j
     Llabel = weakL
@@ -129,8 +129,8 @@ contains
        allocate(Energy(2*ClusterSize*(4**ClusterSize)))
        allocate(Weight(2*ClusterSize*(4**ClusterSize)))
 	
-       Energy = 0.0
-       Weight = 0.0
+       Energy = 0.d0
+       Weight = 0.d0
 
        CALL DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize, sitesremoved )
        
@@ -139,12 +139,12 @@ contains
        CALL BinDOS( my_Dos, Energy, Weight, my_droppedDOS, ClusterSize ) 
        
        deallocate(Energy, Weight)
-       Teff = 0
+       Teff = 0.d0
     else if ( ClusterSize .gt. clusterMax ) then                
        SitesIgnored = SitesIgnored + ClusterSize         ! Increment the number of sites ignored, happens when cluster is too large
 
        ! Effective Hopping still 0
-       Teff = 0
+       Teff = 0.d0
        
     end if
   end subroutine GetDos
@@ -153,9 +153,9 @@ contains
     implicit none
    
     integer, dimension(:), intent(in) :: WeakBonds
-    real, dimension(:), intent(in) :: Bonds
+    real(dp), dimension(:), intent(in) :: Bonds
     integer, dimension(:), allocatable :: Temp
-    real, dimension(:,:), allocatable :: Order
+    real(dp), dimension(:,:), allocatable :: Order
     integer, intent(out) :: weakL, weakR
     integer, intent(in) :: ClusterStage
     integer, intent(in) :: SitesRemoved
@@ -167,7 +167,7 @@ contains
     integer ClusterSize
 
     allocate(Temp(Size(WeakBonds)))
-    Temp = 0
+    Temp = 0.d0
 
     do loop1 = 1,size(WeakBonds)-1
        Temp(loop1 + 1) = WeakBonds(loop1)
@@ -235,15 +235,15 @@ contains
     implicit none
 
                 !---------------------------Inputs-------------------------------------------
-    real, dimension(:), allocatable, intent(inout) :: SitePotential    
-    real, dimension(:), allocatable, intent(inout) :: Hopping          
-    real, dimension(:), allocatable, intent(inout) :: Bonds            
+    real(dp), dimension(:), allocatable, intent(inout) :: SitePotential    
+    real(dp), dimension(:), allocatable, intent(inout) :: Hopping          
+    real(dp), dimension(:), allocatable, intent(inout) :: Bonds            
     integer, dimension(:), allocatable, intent(inout) :: WeakBonds
     
                 !---------------------------Outputs------------------------------------------                                                    
     integer, intent(inout) :: SitesIgnored
-    real, dimension(bins,DOS_MaxCluster), intent(inout) :: my_DOS
-    real, dimension(DOS_MaxCluster), intent(inout) :: my_droppedDOS
+    real(dp), dimension(bins,DOS_MaxCluster), intent(inout) :: my_DOS
+    real(dp), dimension(DOS_MaxCluster), intent(inout) :: my_droppedDOS
     integer, intent(inout) :: my_SitesMissed
     
 
@@ -252,7 +252,7 @@ contains
                                                          ! change lengths of loops over the system size
     integer weakL                                        ! The label for the weak bond on the "left" of the current cluster
     integer weakR                                        ! The label for the weak bond on the "left" of the current cluster
-    real Teff                                            ! Effecitve hopping amplitude between neighbouring sites after a cluster is
+    real(dp) Teff                                            ! Effecitve hopping amplitude between neighbouring sites after a cluster is
                                                          ! removed between them
     integer ClusterSize                                  ! Size of the current cluster
     integer IndexOfNeighbour, ClusterStage, Loop2               ! Loop integers
@@ -350,12 +350,11 @@ contains
           print*, "Error in Full_Dos"
           stop
        end if
-
+       
        
        
     end do system
     ClusterSize = dim - SitesRemoved
-    my_SitesMissed = my_SitesMissed + ClusterSize
     if ( ClusterSize .le. ClusterMax ) then
        !CALL PreSetUp(ClusterSize)
        weakL = WeakBonds(1); weakR = WeakBonds(1)
@@ -364,7 +363,10 @@ contains
     
        If ( CalcPot ) &
                   CALL GetPotential( SitePotential, weakL, weakR, ClusterSize, SitesRemoved )
+    else
+       my_SitesMissed = my_SitesMissed + ClusterSize
     end if
+    
     !CALL PreSetUp(1)    
         
     
@@ -372,7 +374,7 @@ contains
 
   subroutine Full_Dos()
     implicit none
-    real, dimension(:), allocatable :: SitePotential, Hopping, Bonds
+    real(dp), dimension(:), allocatable :: SitePotential, Hopping, Bonds
     integer, dimension(:), allocatable :: WeakBonds
 
     integer SitesRemoved
@@ -383,14 +385,14 @@ contains
     integer i, j, k                                     ! Loop Integer
     real :: start, finish, TIME
     integer :: my_id, ierr, num_procs
-    real :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
+    real(dp) :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
     integer :: my_SitesMissed
  
     !DOS = 0.0
-    my_DOS = 0.0
-    my_droppedDOS = 0.0
+    my_DOS = 0.d0
+    my_droppedDOS = 0.d0
     my_SitesMissed = 0
-    Potential = 0.0
+    Potential = 0.d0
     PrunedBonds = 0
     
 
@@ -428,21 +430,21 @@ contains
     CALL mpi_Barrier(MPI_COMM_WORLD, ierr)
     
     allocate(DOS(bins,DOS_MaxCluster), DroppedDos(DOS_MaxCluster))
-    DOS = 0.0
-    DroppedDos = 0.0
+    DOS = 0.d0
+    DroppedDos = 0.d0
     SitesMissed = 0
              
-    
+
     do i=1,DOS_MaxCluster
-       CALL mpi_reduce(my_DOS(:,i), DOS(:,i), bins, mpi_real, mpi_sum, 0, mpi_comm_world, ierr) 
+       CALL mpi_reduce(my_DOS(:,i), DOS(:,i), bins, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr) 
     end do
-    CALL mpi_reduce(my_droppedDOS(:), DroppedDos(:), DOS_MaxCluster, mpi_real, mpi_sum, 0, mpi_comm_world, ierr)
+    CALL mpi_reduce(my_droppedDOS(:), DroppedDos(:), DOS_MaxCluster, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr)
     CALL mpi_reduce(my_SitesMissed, SitesMissed, 1, mpi_integer, mpi_sum, 0, mpi_comm_world, ierr)
 
     if ( my_id .ne. 0 ) deallocate(DOS, DroppedDos)
        
     if (my_id .eq. 0) then
-
+      
        CALL CPU_TIME(finish)
        TIME = finish - start
 
@@ -459,7 +461,8 @@ contains
 
        
        If ( CalcDos ) then
-
+          
+          
           CALL PrintDOS( TIME, num_procs )
           
        end If
@@ -482,11 +485,11 @@ contains
     
     ! Inputs
     integer, intent(in) :: ClusterSize
-    real, dimension(2*ClusterSize*(4**ClusterSize)), intent(in) :: Energy, Weight
+    real(dp), dimension(2*ClusterSize*(4**ClusterSize)), intent(in) :: Energy, Weight
 
     ! Outputs
-    real, dimension(bins,DOS_MaxCluster), intent(inout) :: myDOS
-    real, dimension(DOS_MaxCluster), intent(inout) :: myDropped
+    real(dp), dimension(bins,DOS_MaxCluster), intent(inout) :: myDOS
+    real(dp), dimension(DOS_MaxCluster), intent(inout) :: myDropped
     
 
     if ( .not. GradientDOS ) then
@@ -528,36 +531,42 @@ contains
        end do
        do i=1,ClusterMax
           CALL OpenFile(100+i, "DOS_"//trim(str(i))//"Site_", "Density of States", "Energy", "Density of States", num_procs )
-          write(100+i,*) "#Cluster Size included: ", i
-          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
-          write(100+i,*) "#Time (s) = ", TIME
-          write(100+i,*) "#This is not a gradient DOS, part", i, "of", ClusterMax
-          CALL PrintData(100+i, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,i), DroppedDos(i) )
+          write(100+i,400) "#Cluster Size included: ", i
+          write(100+i,500) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
+          write(100+i,500) "#Time (s) = ", TIME
+          write(100+i,600) "#This is not a gradient DOS, part", i, "of", ClusterMax
+          CALL PrintData(100+i, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, bins, DOS(:,i), DroppedDos(i) )
           close(100+i)
        end do
     else if ( DOS_MaxCluster .eq. 1 ) then
        CALL OpenFile(100, "DOS", "Density of States", "Energy", "Density of States", num_procs )
-       write(100,*) "#Maximum cluster Size included: ", ClusterMax
-       write(100,*) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
-       write(100,*) "#Time (s) = ", TIME
-       write(100,*) "#This is not a gradient DOS"
-       CALL PrintData(100, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,1), DroppedDos(1))
+       write(100,400) "#Maximum cluster Size included: ", ClusterMax
+       write(100,500) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
+       write(100,500) "#Time (s) = ", TIME
+       write(100,'(A)') "#This is not a gradient DOS"
+       CALL PrintData(100, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, bins, DOS(:,1), DroppedDos(1))
        Close(100)
     else if ( DOS_MaxCluster .eq. ClusterMax ) then
               do i=1,ClusterMax
           CALL OpenFile(100+i, "DOSInc"//trim(str(i))//"_", "Density of States", "Energy", "Density of States", num_procs )
-          write(100+i,*) "#Maximum cluster Size included: ", i
-          write(100+i,*) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
-          write(100+i,*) "#Time (s) = ", TIME
-          write(100+i,*) "#This is a gradient DOS, part", i, "of", ClusterMax
+          write(100+i,400) "#Maximum cluster Size included: ", i
+          print*, SitesMissed, real(dim*systemn*num_procs)
+          write(100+i,500) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
+          write(100+i,500) "#Time (s) = ", TIME
+          write(100+i,600) "#This is a gradient DOS, part", i, "of", ClusterMax
 
           DOS(:,i) = DOS(:,i)/(Sum(DOS(:,DOS_MaxCluster)) + DroppedDos(DOS_MaxCluster))
           
-          CALL PrintData(100+i, '(g12.5,g12.5)', DOS_EMin, DOS_EMax, bins, DOS(:,i))
+          CALL PrintData(100+i, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, bins, DOS(:,i))
           Close(100+i)
        end do
     end if
 
+400 format(A,I2) !Text and 2-digit integer
+500 format(A,F10.5) !Text and 9 digit real with a decimal point, with up to 5 decimal places
+600 format(A,I2,A,I2) !Text, 2 digit integer, text, 2 digit integer
+    
+    
   end subroutine PrintDOS
 
   end module DOSsetup
