@@ -516,7 +516,7 @@ contains
     
     call BuildHSUB(n_up, n_dn, HSUB, U, E, nsites)
     
-    call ssyevr_lapack1(Ops%msize(n_up,n_dn),HSUB,WSUB,VSUB)
+    call dsyevr_lapack1(Ops%msize(n_up,n_dn),HSUB,WSUB,VSUB)
     
     e_ground(n_up,n_dn) = WSUB(1) - mu*(n_up+n_dn)
     
@@ -541,7 +541,7 @@ contains
     end do
     HSUB = H_hat%HFULL(g_up,g_dn)%HSUB
     call BuildHSUB(g_up, g_dn, HSUB, U, E, nsites)
-    call ssyevr_lapack(Ops%msize(g_up,g_dn),HSUB,WSUB,VSUB)
+    call dsyevr_lapack(Ops%msize(g_up,g_dn),HSUB,WSUB,VSUB)
     
     do i=1,Ops%msize(g_up,g_dn)
        grand_potential(i+Ops%mblock(g_up,g_dn)-1) = WSUB(i) - mu*(g_up+g_dn)  ! grand potentials
@@ -689,7 +689,7 @@ contains
                    inner_prod_dn =  (dot_product(IPESdn_MBG(low:high,j),eigenvectors(i)%comp(1:Ops%msize(n_up,n_dn))))**2
                 end if
                 Energy(k) = grand_potential(i) - grand_potential_ground       ! location of the peak
-                Weight(k) = (inner_prod_up + inner_prod_dn)*0.5.0_dp          ! weight of the peak (average up and down spin components)
+                Weight(k) = (inner_prod_up + inner_prod_dn)*0.5               ! weight of the peak (average up and down spin components)
                 k=k+1
              end do
           end do
@@ -707,7 +707,7 @@ contains
   subroutine dsyevr_lapack1(dim,matrix,eigvalues,eigvectors)
     
     !  %-----------------------------------------------------------------%
-    !  |  This subroutine calls the driver SSYEVR.                       |
+    !  |  This subroutine calls the driver DSYEVR.                       |
     !  |                                                                 |
     !  |  Solves the only the lowest eigenvalues of the matrix.          |
     !  |      - Eigenvalues returned in eigvalues                        |
@@ -758,14 +758,14 @@ contains
     
     call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
     deallocate(ISUPPZ,WORK,IWORK)
-  end subroutine ssyevr_lapack1
+  end subroutine dsyevr_lapack1
   
   !************************************************************************************
   
   subroutine dsyevr_lapack(dim,matrix,eigvalues,eigvectors)
     
     !  %-----------------------------------------------------------------%
-    !  |  This subroutine calls the driver SSYEVR.                       |
+    !  |  This subroutine calls the driver DSYEVR.                       |
     !  |                                                                 |
     !  |  Solves the eigenvalues and eigenvectors of the matrix.         |
     !  |      - Eigenvalues returned in eigvalues                        |
@@ -818,7 +818,7 @@ contains
     
     call dsyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
     deallocate(ISUPPZ,WORK,IWORK)
-  end subroutine ssyevr_lapack
+  end subroutine dsyevr_lapack
   !************************************************************************************
   integer function choose(j,k)
     ! %---------------------------------------------%
