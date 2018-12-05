@@ -279,7 +279,7 @@ contains
     ! Other
     integer :: EndSite
     
-    if ( (weakL .gt. weakR) .and. ( ClusterSize .gt. 1 ) ) then
+    if ( (weakL .ge. weakR) .and. ( ClusterSize .gt. 1 ) ) then
        EndSite = (dim - sitesremoved) - weakL
        Sites(1:EndSite) = SitePotential((weakL+1):(dim - sitesremoved))
        Sites((EndSite+1):ClusterSize) = SitePotential(1:weakR)

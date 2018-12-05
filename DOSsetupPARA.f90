@@ -268,6 +268,7 @@ contains
     Loop2 = 0
     Teff = 0
 
+    
     system: do while ( (size(WeakBonds) .gt. 1) .and. (WeakBonds(1) .ne. 0) .and. ( ClusterStage .le. ClusterMax ) ) ! Stop when WeakBonds is set to have 1 element or have the first
                                                                        ! element be 0. Either only one cluster left or no weak bonds.
  
@@ -354,9 +355,9 @@ contains
        
        
     end do system
+    
     ClusterSize = dim - SitesRemoved
     if ( ClusterSize .le. ClusterMax ) then
-       !CALL PreSetUp(ClusterSize)
        weakL = WeakBonds(1); weakR = WeakBonds(1)
        if ( CalcDos ) CALL GetDoS(my_DOS, my_droppedDOS, SitePotential, Teff, ClusterSize &
             , weakL, weakR, SitesRemoved, SitesIgnored )
@@ -366,8 +367,7 @@ contains
     else
        my_SitesMissed = my_SitesMissed + ClusterSize
     end if
-    
-    !CALL PreSetUp(1)    
+       
         
     
   end subroutine System_DoS
