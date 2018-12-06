@@ -679,6 +679,7 @@ contains
                 end if
                 Energy(k) = grand_potential_ground - grand_potential(i)              ! location of the peak
                 Weight(k) = (inner_prod_up + inner_prod_dn)*0.5                      ! weight of the peak (average up and down spin components)
+!                if (Energy(k) .gt. 0) print*, "hi"
                 k=k+1
                 inner_prod_up = 0.0_dp
                 inner_prod_dn = 0.0_dp
@@ -690,6 +691,7 @@ contains
                 end if
                 Energy(k) = grand_potential(i) - grand_potential_ground       ! location of the peak
                 Weight(k) = (inner_prod_up + inner_prod_dn)*0.5               ! weight of the peak (average up and down spin components)
+!                if (Energy(k) .gt. 0) print*, "ho"
                 k=k+1
              end do
           end do
