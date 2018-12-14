@@ -178,19 +178,16 @@ contains
     real(dp), intent(in), dimension(:) :: Data
     real, intent(in) :: Min, Max
     real(dp), optional, intent(in) :: Dropped
-    real :: BinWidth ! Width of bins for normalization
     integer :: Loop1 ! Loop integer for writing to file
 
     !This is Dropped is present
     If ( Present(Dropped) ) then
-       BinWidth = (Max - Min)/real(BinNum)
        do Loop1=1,BinNum
           write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( (Sum(Data) + Dropped) * BinWidth )
        end do
     else
        !If not present this is used. Difference is minor but not dividing by Dropped or the sum of data.
-       !Second part is to enable cumulative DOS (DOS with clustermax=1,2,3,4,5 normalized to the DOS with clustermax = 6)
-       BinWidth = (Max - Min)/real(BinNum)             
+       !Second part is to enable cumulative DOS (DOS with clustermax=1,2,3,4,5 normalized to the DOS with clustermax = 6)           
        do Loop1=1,BinNum
           write(Unum,( Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( BinWidth )
        end do
@@ -264,12 +261,11 @@ contains
    
   end subroutine resize_array
   
-  subroutine DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize, sitesremoved )
+  subroutine DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize )
     implicit none
 
     ! Inputs
-    integer, intent(in) :: sitesremoved
-    real(dp), dimension(dim-sitesremoved), intent(in) :: SitePotential
+    real(dp), dimension(dim), intent(in) :: SitePotential
     integer, intent(in) :: weakL, weakR
     integer, intent(in) :: ClusterSize
 
@@ -279,21 +275,19 @@ contains
     ! Other
     integer :: EndSite
     
-    if ( (weakL .ge. weakR) .and. ( ClusterSize .gt. 1 ) ) then
-       EndSite = (dim - sitesremoved) - weakL
-       Sites(1:EndSite) = SitePotential((weakL+1):(dim - sitesremoved))
+    if ( (weakL .ge. weakR) .and. (ClusterSize .gt. 1) ) then !2, 3 site clusters which wrap around the "edge" of the system. As well as 4-site clusters with a single weak bond
+       EndSite = dim - weakL
+       Sites(1:EndSite) = SitePotential((weakL+1):dim)
        Sites((EndSite+1):ClusterSize) = SitePotential(1:weakR)
-    else if ( (weakL .gt. weakR) .and. ( ClusterSize .eq. 1 ) ) then
+    else if ( ClusterSize .eq. 1 ) then !1-site clusters
        Sites = SitePotential(weakR:weakR)
-    else if ( size(SitePotential) .eq. ClusterSize ) then
+    else if ( (ClusterSize .eq. dim) .and. (weakL .eq. 0) ) then !4-site clusters with no weak bonds
        Sites = SitePotential
-    else
+    else !All other clusters
        Sites = SitePotential((weakL+1):weakR)
     end if
 
-  end subroutine DefineCluster
-  
-    
+  end subroutine DefineCluster    
        
 
   !     str(k) takes an integer k as input and returns a string with the same integer

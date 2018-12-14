@@ -103,11 +103,12 @@ contains
   ! Test002 shows that the site potentials are being selected correctly and the strongest bond has been chosen.
   !
   
-  subroutine create_AHM( SitePotential, Hopping, Bonds, EDiff )
+  subroutine create_AHM( SitePotential, Bonds, Hopping, EDiff )
     implicit none
     
     !---------------------------Outputs------------------------------------------
-    real(dp), dimension(dim), intent(out) :: SitePotential, Hopping, Bonds
+    real(dp), dimension(dim), intent(out) :: SitePotential, Bonds, Hopping
+    integer, allocatable :: WeakBonds(:)
     real(dp), dimension(dim), optional, intent(out) :: EDiff
     
     !---------------------------Coding Tools-------------------------------------
@@ -152,7 +153,7 @@ contains
 
     end do
    
-    return
+   
   end subroutine create_AHM
 
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -162,12 +163,12 @@ contains
   subroutine Strongest_Bond( Bonds, SitePotential, Hopping, LeftNbr, RightNbr, EDiff )
     implicit none
                 !---------------------------Output-------------------------------------------
-    real(dp), dimension(:), intent(out) :: Bonds
+    real(dp), dimension(dim), intent(out) :: Bonds
     real(dp), dimension(:), optional, intent(out) :: EDiff
 
                 !---------------------------Inputs-------------------------------------------
-    real(dp), dimension(:), intent(in) :: SitePotential
-    real(dp), dimension(:), intent(in) :: Hopping
+    real(dp), dimension(dim), intent(in) :: SitePotential
+    real(dp), dimension(dim), intent(in) :: Hopping
     integer, intent(in) :: LeftNbr                       ! Site label of the left neighbour site
     integer, intent(in) :: RightNbr                      ! Site label of the right neighbour site
 
@@ -318,14 +319,13 @@ contains
   ! CalcWeakBonds routine. Inputs: Bonds array, SitesRemoved. Output: WeakBonds array
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  subroutine CalcWeakBonds( Bonds, WeakBonds, SitesRemoved )
+  subroutine CalcWeakBonds( Bonds, WeakBonds )
     implicit none
                 !---------------------------Output-------------------------------------------
     integer, dimension(:), allocatable, intent(out) :: WeakBonds
 
                 !---------------------------Inputs-------------------------------------------
-    real(dp), dimension(:), intent(in) :: Bonds
-    integer, optional, intent(in) :: SitesRemoved
+    real(dp), dimension(dim), intent(in) :: Bonds
 
                 !---------------------------Programming Variables----------------------------
     integer NumWeakBonds                                 ! The number of weak bonds in the system at a given point in the RG
@@ -335,68 +335,34 @@ contains
     NumWeakBonds = 0
 
     !---------------------------Count Weak Bonds---------------------------------
-    if (Present(SitesRemoved)) then
-
-       do loop1 = 1, ( dim - SitesRemoved )
-          if ( Bonds(loop1) .lt. bond_cutoff ) then         ! Check if each bond is below the cutoff. If yes, increment NumWeakBonds
-             NumWeakBonds = NumWeakBonds + 1
-          end if
-       end do       
-       if ( NumWeakBonds .gt. 0 ) then                      ! If there are any weak bonds then calculate the array
-          allocate(WeakBonds(NumWeakBonds))
-          NumWeakBonds = 0
-          do loop1 = 1,( dim - SitesRemoved ) 
-             if ( Bonds(loop1) .lt. bond_cutoff ) then
-                NumWeakBonds = NumWeakBonds + 1
-                WeakBonds(NumWeakBonds) = loop1
-                if ( WeakBonds(NumWeakBonds) .le. 0 ) then 
-                   print*, 'You belong in a museum, Error:002', loop1
-                   stop
-                end if
-                
-             end if
-          end do
-       else if ( NumWeakBonds .eq. 0 ) then                 ! If there are no weak bonds then set WeakBonds as follows. This cannot happen
-          ! under normal circumstances. Used to tell the code that there are no weakbond
-          allocate(WeakBonds(1))
-          WeakBonds(1) = 0
-       end if
-
 
        
-    else
-
-
+    do loop1 = 1,dim
+       if ( Bonds(loop1) .lt. bond_cutoff ) then         ! Check if each bond is below the cutoff. If yes, increment NumWeakBonds
+          NumWeakBonds = NumWeakBonds + 1
+       end if
+    end do
+    if ( NumWeakBonds .gt. 0 ) then                      ! If there are any weak bonds then calculate the array
+       allocate(WeakBonds(NumWeakBonds))
+       NumWeakBonds = 0
        
        do loop1 = 1,dim
-          if ( Bonds(loop1) .lt. bond_cutoff ) then         ! Check if each bond is below the cutoff. If yes, increment NumWeakBonds
+          if ( Bonds(loop1) .lt. bond_cutoff ) then
              NumWeakBonds = NumWeakBonds + 1
+             WeakBonds(NumWeakBonds) = loop1
+             if ( WeakBonds(NumWeakBonds) .le. 0 ) then 
+                print*, 'You belong in a museum, Error:002', loop1
+                stop
+             end if
+             
           end if
        end do
-       if ( NumWeakBonds .gt. 0 ) then                      ! If there are any weak bonds then calculate the array
-          allocate(WeakBonds(NumWeakBonds))
-          NumWeakBonds = 0
-
-          do loop1 = 1,dim
-             if ( Bonds(loop1) .lt. bond_cutoff ) then
-                NumWeakBonds = NumWeakBonds + 1
-                WeakBonds(NumWeakBonds) = loop1
-                if ( WeakBonds(NumWeakBonds) .le. 0 ) then 
-                   print*, 'You belong in a museum, Error:002', loop1
-                   stop
-                end if
-                
-             end if
-          end do
-       else if ( NumWeakBonds .eq. 0 ) then                 ! If there are no weak bonds then set WeakBonds as follows. This cannot happen
-          ! under normal circumstances. Used to tell the code that there are no weakbond
-          allocate(WeakBonds(1))
-          WeakBonds(1) = 0
-       end if
-
-
-       
-    end if
+    else if ( NumWeakBonds .eq. 0 ) then                 ! If there are no weak bonds then set WeakBonds as follows. This cannot happen
+       ! under normal circumstances. Used to tell the code that there are no weakbond
+       allocate(WeakBonds(1))
+       WeakBonds(1) = 0
+    end if       
+   
     
   end subroutine CalcWeakBonds
 

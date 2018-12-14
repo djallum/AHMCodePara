@@ -81,14 +81,16 @@ contains
     integer, dimension(nsites,2) :: neighbours
     real(dp), intent(in) :: t
     integer :: n_up,n_dn
+    logical Periodic
+    Periodic = .false.
 
     
     allocate(H%HFULL(0:nsites,0:nsites))
     do n_up=0,nsites
        do n_dn=0,nsites
           allocate(H%HFULL(n_up,n_dn)%HSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn)))
-          CALL make_neighbours(nsites, neighbours)
-          CALL BuildOffDiag(n_up,n_dn,H%HFULL(n_up,n_dn)%HSUB,neighbours,t,nsites)
+          CALL make_neighbours(nsites, neighbours, Periodic)
+          CALL BuildOffDiag(n_up,n_dn,H%HFULL(n_up,n_dn)%HSUB,neighbours,t,nsites,Periodic)
        end do
     end do
     
@@ -304,13 +306,14 @@ contains
   end subroutine transformations
   !************************************************************************************
   !************************************************************************************
-  subroutine make_neighbours(nsites, neighbours)
+  subroutine make_neighbours(nsites, neighbours, Periodic)
     ! makes matrix that containes information about which sites are nearest neighbours
     ! neighbours(i,:) is a list of all the neighbours of site i. Each site has 2 nearest neighbours
     ! first and last site have neighbours with index 0 which will tell the program that it has no neighbour on that side
     implicit none
     integer, intent(in) :: nsites
     integer, intent(out), dimension(:,:) :: neighbours
+    logical, intent(in) :: Periodic
     integer i
     
     neighbours = 0
@@ -327,6 +330,12 @@ contains
        neighbours(i,2) = i+1
        
     end do
+
+    if ( Periodic ) then
+       neighbours(1,1) = nsites
+       neighbours(nsites,2) = 1
+    end if
+    
     
   end subroutine make_neighbours
   !************************************************************************************
@@ -364,12 +373,13 @@ contains
   end subroutine matrix_sizes
   !************************************************************************************
   !************************************************************************************
-  subroutine BuildOffDiag(n_up,n_dn,HSUB,neighbours,t,nsites)
+  subroutine BuildOffDiag(n_up,n_dn,HSUB,neighbours,t,nsites,Periodic)
     implicit none
     integer, intent(in) :: n_up,n_dn, nsites
-    real(dp), dimension(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn)), intent(out) :: HSUB
+    real(dp), dimension(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn)), intent(inout) :: HSUB
     integer, intent(in), dimension(nsites,2) :: neighbours
     real(dp), intent(in) :: t
+    logical, intent(in) :: Periodic
 
     integer :: istate, isite, i, j, y        ! counters for loops
     integer :: high, low                     ! Highest and lowest state labels
@@ -381,7 +391,7 @@ contains
     integer :: new_index                     ! the column index of the new FS after the hopping
     integer :: state_index                   ! the row index of the old FS before the hopping
 
-    HSUB = 0.d0
+    if ( .not. Periodic ) HSUB = 0.d0
     low = Ops(nsites)%mblock(n_up,n_dn)
     high = Ops(nsites)%mblock(n_up,n_dn) + Ops(nsites)%msize(n_up,n_dn) - 1
     do istate = low,high  ! loop over all the states in each submatrix
@@ -456,16 +466,24 @@ contains
     end do
   end subroutine BuildOffDiag
   !************************************************************************************
-  !************************************************************************************
-  subroutine BuildHSUB(n_up, n_dn, HSUB, U, E, nsites)
+  !************************************************************************************  
+  subroutine BuildHSUB(n_up, n_dn, HSUB, U, E, t, nsites, Periodic)
     implicit none
     integer, intent(in) :: n_up,n_dn
     real(dp), dimension(:,:), intent(out) :: HSUB
     integer, intent(in) :: nsites
-    real(dp), intent(in) :: U, E(nsites)
+    real(dp), intent(in) :: U, E(nsites), t
+    logical, intent(in) :: Periodic
     integer :: istate, isite                 ! counters for loops
     integer :: ne                            ! counts the number of electrons (used to calculate the phase)
+    integer :: neighbours(2,nsites)
     
+    if ( Periodic ) then
+       neighbours = 0
+       neighbours(1,1) = nsites
+       neighbours(nsites,2) = 1
+       call BuildOffDiag(n_up,n_dn,HSUB,neighbours,t,nsites,Periodic)
+    end if
     
     do istate = 1,Ops(nsites)%msize(n_up,n_dn)
        do isite=1,nsites                     ! loop over all the site of each state
@@ -481,39 +499,41 @@ contains
   end subroutine BuildHSUB
   !************************************************************************************
   !************************************************************************************ 
-  subroutine solve_hamiltonian1(E, U, mu, t, neighbours, e_ground, nsites, nstates)
+  subroutine solve_hamiltonian1(E, U, mu, t, neighbours, e_ground, nsites, nstates, Periodic)
     
     implicit none
     integer, intent(in) :: nsites, nstates
     real(dp), intent(in) :: E(nsites), U, mu
     real(dp), intent(in) :: t                    ! the hopping integral
     integer, intent(in), dimension(:,:) :: neighbours
-    real(dp), intent(inout), dimension(0:nsites,0:nsites) :: e_ground       ! array of the lowest grand potential (Gpot) of each submatrix (e_ground(i,j) is lowest Gpot of Hij) 
+    real(dp), intent(inout), dimension(0:nsites,0:nsites) :: e_ground       ! array of the lowest grand potential (Gpot) of each submatrix (e_ground(i,j) is lowest Gpot of Hij)
+    logical, intent(in) :: Periodic
     integer :: n_up,n_dn                     ! the number of up ad down electrons (used to loop over each submatrix)
 
     
     
     do n_up = 0,nsites             ! loop over all submatrices
        do n_dn = 0,nsites             ! loop over all submatrices
-          Call GetEnergy(n_up,n_dn, neighbours, U, E, mu, t, nsites, nstates, e_ground)
+          Call GetEnergy(n_up,n_dn, neighbours, U, E, mu, t, nsites, nstates, e_ground, Periodic)
        end do
     end do
     
   end subroutine solve_hamiltonian1
   !************************************************************************************
   !************************************************************************************
-  subroutine GetEnergy(n_up,n_dn, neighbours, U, E, mu, t, nsites, nstates, e_ground)
+  subroutine GetEnergy(n_up,n_dn, neighbours, U, E, mu, t, nsites, nstates, e_ground, Periodic)
 
     implicit none
     integer, intent(in) :: n_up, n_dn, nsites, nstates, neighbours(:,:)
     real(dp), intent(inout), dimension(0:nsites,0:nsites) :: e_ground
     real(dp), intent(in) :: E(nsites), U, mu, t
+    logical, intent(in) :: Periodic
     real(dp) :: HSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn))
     real(dp) :: VSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn))
     real(dp) :: WSUB(Ops(nsites)%msize(n_up,n_dn))
     HSUB = H_hat(nsites)%HFULL(n_up,n_dn)%HSUB
     
-    call BuildHSUB(n_up, n_dn, HSUB, U, E, nsites)
+    call BuildHSUB(n_up, n_dn, HSUB, U, E, t, nsites, Periodic)
 
     call ssyevr_lapack1(Ops(nsites)%msize(n_up,n_dn),HSUB,WSUB,VSUB)
     e_ground(n_up,n_dn) = WSUB(1) - mu*(n_up+n_dn)
@@ -522,7 +542,7 @@ contains
   !************************************************************************************
   !************************************************************************************
   subroutine solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates, &
-       g_up,g_dn, eigenvectors, grand_potential)
+       g_up,g_dn, eigenvectors, grand_potential,Periodic)
     implicit none
     integer, intent(in) :: nsites, nstates
     real(dp), intent(in) :: E(nsites), U, mu
@@ -531,6 +551,7 @@ contains
     integer, intent(in), dimension(:,:) :: neighbours
     real(dp), intent(inout), dimension(:) :: grand_potential          ! grand potentials (eigenenergies - mu*number electrons)
     TYPE(cell), intent(inout), dimension(:) :: eigenvectors        ! the many body eigenvectors (MBE) only coefficients of basis states with same n_up,n_dn as it
+    logical, intent(in) :: Periodic
     real(dp) :: HSUB(Ops(nsites)%msize(g_up,g_dn),Ops(nsites)%msize(g_up,g_dn))
     real(dp) :: VSUB(Ops(nsites)%msize(g_up,g_dn),Ops(nsites)%msize(g_up,g_dn)), WSUB(Ops(nsites)%msize(g_up,g_dn))
     integer :: i
@@ -538,7 +559,7 @@ contains
        allocate(eigenvectors(i+Ops(nsites)%mblock(g_up,g_dn)-1)%comp(1:Ops(nsites)%msize(g_up,g_dn)))
     end do
     HSUB = H_hat(nsites)%HFULL(g_up,g_dn)%HSUB
-    call BuildHSUB(g_up, g_dn, HSUB, U, E, nsites)
+    call BuildHSUB(g_up, g_dn, HSUB, U, E, t, nsites, Periodic)
     call ssyevr_lapack(Ops(nsites)%msize(g_up,g_dn),HSUB,WSUB,VSUB)
     
     do i=1,Ops(nsites)%msize(g_up,g_dn)
@@ -555,11 +576,12 @@ contains
   end subroutine solve_hamiltonian2
   !************************************************************************************
   !************************************************************************************
-  subroutine DiagCluster(nsites,nstates,E,Energy,Weight,mu,U,t)
+  subroutine DiagCluster(nsites,nstates,E,Energy,Weight,mu,U,t,Periodic)
     implicit none
     integer, intent(in) :: nsites,nstates 
     real(dp), intent(in) :: E(nsites), mu, U, t
     real(dp), dimension(nsites*2*nstates), intent(out) :: Energy, Weight
+    logical, intent(in) :: Periodic
     
     
     real(dp), dimension(nstates) :: grand_potential          ! grand potentials (eigenenergies - mu*number electrons)
@@ -579,8 +601,8 @@ contains
     real(dp), dimension(nstates,nsites) :: PESdn_MBG, PESup_MBG   ! MBG after a down or up photo emmision (PE) respectively (PESdn_MBG(i,:) is  c_{i,dn}|Psi0> )
     real(dp), dimension(nstates,nsites) :: IPESdn_MBG, IPESup_MBG ! MBG after a down or up inverse photo emmision respectively (IPESdn_MBG(i,:) is  c^{dagger}_{i,dn}|Psi0> )
     real(dp) :: inner_prod_up, inner_prod_dn             ! inner products used when calculating weight of LDOS contributions (<Psi|PESdn_MBG> or <Psi|IPESdn_MBG>)
+    real :: start, finish
     
-    call make_neighbours(nsites, neighbours)
     MBGvec=0.d0
     grand_potential_ground = 0.d0
 
@@ -590,7 +612,7 @@ contains
     Energy = 0.d0
     Weight = 0.d0
     
-    call solve_hamiltonian1(E, U, mu, t, neighbours, e_ground, nsites, nstates)  ! solve for the lowest grand potential of each hamiltonian sub-matrix
+    call solve_hamiltonian1(E, U, mu, t, neighbours, e_ground, nsites, nstates, Periodic)  ! solve for the lowest grand potential of each hamiltonian sub-matrix
     
     
     grand_potential_ground = minval(e_ground)
@@ -606,28 +628,28 @@ contains
     max_dn = MIN(nsites,g_dn+1)
     
     location = Ops(nsites)%mblock(g_up,g_dn)       ! find the location of the lowest grand_potential in the array grand_potential_ground  
-    
+
     call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
-         g_up,g_dn,eigenvectors,grand_potential)
+         g_up,g_dn,eigenvectors,grand_potential,Periodic)
 
     !---------Solve for eigenvectors and eigenvalues all sub hamiltonians with +/- 1 electron as MBG--------------------
     if (g_up /= 0) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
-         g_up-1,g_dn,eigenvectors,grand_potential)
+         g_up-1,g_dn,eigenvectors,grand_potential,Periodic)
     
     if (g_dn /= 0) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
-         g_up,g_dn-1,eigenvectors,grand_potential)
+         g_up,g_dn-1,eigenvectors,grand_potential,Periodic)
     
     if (g_up /= nsites) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
-         g_up+1,g_dn,eigenvectors,grand_potential)
+         g_up+1,g_dn,eigenvectors,grand_potential,Periodic)
     
     if (g_dn /= nsites) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
-         g_up,g_dn+1,eigenvectors,grand_potential)
-    
+         g_up,g_dn+1,eigenvectors,grand_potential,Periodic)
+
     high = Ops(nsites)%mblock(g_up,g_dn) + Ops(nsites)%msize(g_up,g_dn) - 1                                 ! find range of indexs of fock states in the MBG's submatrix
     MBGvec(Ops(nsites)%mblock(g_up,g_dn):high) = eigenvectors(location(1))%comp(1:Ops(nsites)%msize(g_up,g_dn))   ! set MBGvec to the eigenvector corresponding to the lowest energy
     
     !------------------calculate PESdn_MBG, PESup_MBG, IPESup_MBG, IPESdn_MBG------------------------------------------
-    
+  
     do j=1,nsites
        do i=1,nstates
           if (Ops(nsites)%PES_up(i,j)==0) then
@@ -652,8 +674,7 @@ contains
           end if
        end do
     end do
-    
-    
+
     !---------------------------calculate the LDOS for all the sites--------------------------------------------------
     k=1
     do n_up=min_up,max_up                ! loop over all possible submatrices
