@@ -299,13 +299,14 @@ contains
   end subroutine transformations
   !************************************************************************************
   !************************************************************************************
-  subroutine make_neighbours(nsites, neighbours)
+  subroutine make_neighbours(nsites, neighbours, Periodic)
     ! makes matrix that containes information about which sites are nearest neighbours
     ! neighbours(i,:) is a list of all the neighbours of site i. Each site has 2 nearest neighbours
     ! first and last site have neighbours with index 0 which will tell the program that it has no neighbour on that side
     implicit none
     integer, intent(in) :: nsites
     integer, intent(out), dimension(:,:) :: neighbours
+    logical, intent(in) :: Periodic
     integer i
     
     neighbours = 0
