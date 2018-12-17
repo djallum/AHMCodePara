@@ -178,18 +178,21 @@ contains
     real(dp), intent(in), dimension(:) :: Data
     real, intent(in) :: Min, Max
     real(dp), optional, intent(in) :: Dropped
+    real(dp) :: width
     integer :: Loop1 ! Loop integer for writing to file
 
     !This is Dropped is present
     If ( Present(Dropped) ) then
+       width = (Max-Min)/BinNum
        do Loop1=1,BinNum
-          write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( (Sum(Data) + Dropped) * BinWidth )
+          write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( (Sum(Data) + Dropped) * width )
        end do
     else
        !If not present this is used. Difference is minor but not dividing by Dropped or the sum of data.
-       !Second part is to enable cumulative DOS (DOS with clustermax=1,2,3,4,5 normalized to the DOS with clustermax = 6)           
+       !Second part is to enable cumulative DOS (DOS with clustermax=1,2,3,4,5 normalized to the DOS with clustermax = 6)
+       width = (Max-Min)/BinNum
        do Loop1=1,BinNum
-          write(Unum,( Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( BinWidth )
+          write(Unum,( Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( width )
        end do
     end If
     

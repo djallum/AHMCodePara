@@ -45,7 +45,7 @@ contains
   ! renormalized
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
-  subroutine System_DoS( my_DOS, my_droppedDOS, my_SitesMissed, SitePotential, WeakBonds )
+  subroutine System_DoS( my_DOS, my_droppedDOS, my_Potential, my_SitesMissed, SitePotential, WeakBonds )
     implicit none
 
                 !---------------------------Inputs-------------------------------------------
@@ -55,6 +55,7 @@ contains
                 !---------------------------Outputs------------------------------------------                                                    
     real(dp), dimension(bins,DOS_MaxCluster), intent(inout) :: my_DOS
     real(dp), dimension(DOS_MaxCluster), intent(inout) :: my_droppedDOS
+    real(dp), dimension(bins), intent(inout) :: my_Potential
     integer, intent(inout) :: my_SitesMissed
     
 
@@ -74,8 +75,11 @@ contains
 
     Periodic = .false.
 
+  !  print*, "Site potentials", SitePotential
+  !  print*, "Weak bonds", WeakBonds
     
     do loop1 = 1,Size(WeakBonds)
+       if ( WeakBonds(1) .eq. 0 ) EXIT
        weakL = WeakBonds(Loop1)                                  ! Currently cluster has weakL as its left neighbour
        
        nextWeak = Loop1 + 1                                      ! Next bond label in WeakBonds creates a cluster with weakL
@@ -103,10 +107,26 @@ contains
        Weight = 0.0_dp
        
        CALL DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize )
-
-       CALL DiagCluster(ClusterSize,4**ClusterSize,Sites,Energy,Weight,ChemPot,uSite,hop,Periodic)
+   !    print*, "cluster", loop1
+   !    print*, Sites
+   !    print*, ""
+       if ( POT_AllClusters ) then
+          if ( CalcPot .and. (ClusterSize .le. POT_MaxCluster)) then
+             CALL Bin_Data( my_Potential, Sites, Max=POT_EMax, Min=POT_EMin )
+          end if
+       else
+          if ( CalcPot .and. (ClusterSize .eq. POT_MaxCluster)) then
+             CALL Bin_Data(my_Potential, Sites, Max=POT_EMax, Min=POT_EMin)
+          end if
+       end if
        
-       CALL BinDOS( my_Dos, Energy, Weight, my_droppedDOS, ClusterSize )
+             
+          
+       if ( CalcDos ) then
+          CALL DiagCluster(ClusterSize,4**ClusterSize,Sites,Energy,Weight,ChemPot,uSite,hop,Periodic)
+          CALL BinDOS( my_Dos, Energy, Weight, my_droppedDOS, ClusterSize )
+       end if
+       
 
        deallocate(Sites, Energy, Weight)
           
@@ -126,10 +146,21 @@ contains
        Weight = 0.0_dp
        
        CALL DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize )
+
+       if ( POT_AllClusters ) then
+          if ( CalcPot .and. (ClusterSize .le. POT_MaxCluster)) then
+             CALL Bin_Data( my_Potential, Sites, Max=POT_EMax, Min=POT_EMin )
+          end if
+       else
+          if ( CalcPot .and. (ClusterSize .eq. POT_MaxCluster)) then
+             CALL Bin_Data(my_Potential, Sites, Max=POT_EMax, Min=POT_EMin)
+          end if
+       end if
        
-       CALL DiagCluster(ClusterSize,4**ClusterSize,Sites,Energy,Weight,ChemPot,uSite,hop,Periodic)
-       
-       CALL BinDOS( my_Dos, Energy, Weight, my_droppedDOS, ClusterSize )
+       if ( CalcDos ) then
+          CALL DiagCluster(ClusterSize,4**ClusterSize,Sites,Energy,Weight,ChemPot,uSite,hop,Periodic)
+          CALL BinDOS( my_Dos, Energy, Weight, my_droppedDOS, ClusterSize )
+       end if
        
        deallocate(Sites, Energy, Weight)
     end if
@@ -151,13 +182,16 @@ contains
     real :: start, finish, TIME
     integer :: my_id, ierr, num_procs
     real(dp) :: my_DOS(bins,DOS_MaxCluster), my_droppedDOS(DOS_MaxCluster)
+    real(dp) :: my_Potential(bins)
+    real(dp), allocatable :: TEMP(:)
     integer :: my_SitesMissed
+    integer :: a,b,c,d, diff
  
     !DOS = 0.0
     my_DOS = 0.d0
     my_droppedDOS = 0.d0
     my_SitesMissed = 0
-    Potential = 0.d0
+    my_Potential = 0.d0
     PrunedBonds = 0
     
 
@@ -173,10 +207,10 @@ contains
 
     CALL init_random_seed(my_id)
     if (my_id .eq. 0) CALL CorrectInputs( )
-    
+    k=0
     do i = 1,systemn
-       if ( mod(real(i),0.1*systemn) == 0.0 ) then
-          print*, int(i/real(systemn)*100), "%"
+       if ( mod(i,int(0.1*systemn)) == 0.0 ) then
+          print*, int(i/real(systemn)*100), "%", "on process", my_id
        end if
        SitePotential = 0.0_dp
        Hopping = 0.0_dp
@@ -185,60 +219,122 @@ contains
        !---------------------------Create System------------------------------------
        call create_AHM( SitePotential, Bonds, Hopping)
        call CalcWeakBonds( Bonds, WeakBonds )
+       if (WeakBonds(1) .eq. 0) k=k+4
        if ( (WeakBonds(1) .eq. 0) .and. (dim .gt. ClusterMax) ) then
           !print*, "All Bonds Strong"
           CYCLE
        end if
-       CALL system_Dos( my_DOS, my_droppedDOS, My_SitesMissed, SitePotential, WeakBonds )
+       CALL system_Dos( my_DOS, my_droppedDOS, my_Potential, My_SitesMissed, SitePotential, WeakBonds )
     end do
-    CALL mpi_Barrier(MPI_COMM_WORLD, ierr)
+
     
-    allocate(DOS(bins,DOS_MaxCluster), DroppedDos(DOS_MaxCluster))
-    DOS = 0.d0
-    DroppedDos = 0.d0
-    SitesMissed = 0
-             
-
-    do i=1,DOS_MaxCluster
-       CALL mpi_reduce(my_DOS(:,i), DOS(:,i), bins, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr) 
-    end do
-    CALL mpi_reduce(my_droppedDOS(:), DroppedDos(:), DOS_MaxCluster, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr)
+    CALL mpi_Barrier(MPI_COMM_WORLD, ierr)
     CALL mpi_reduce(my_SitesMissed, SitesMissed, 1, mpi_integer, mpi_sum, 0, mpi_comm_world, ierr)
-
-    if ( my_id .ne. 0 ) deallocate(DOS, DroppedDos)
-       
-    if (my_id .eq. 0) then
-      
-       CALL CPU_TIME(finish)
-       TIME = finish - start
-
-       do i=1,ClusterMax
-          !print*, "Cluster: ", i
-          do j = 1,bins
-             !print*, DOS(j,i)
-             if (DOS(j,i) .ne. DOS(j,i)) then
-                print*, "DOS NaN", j
-             end if
+    if ( CalcDoS ) then
+       allocate(DOS(bins,DOS_MaxCluster), DroppedDos(DOS_MaxCluster))
+       DOS = 0.d0
+       DroppedDos = 0.d0
+       SitesMissed = 0
              
-          end do
-       end do
 
+       do i=1,DOS_MaxCluster
+          CALL mpi_reduce(my_DOS(:,i), DOS(:,i), bins, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr) 
+       end do
+       CALL mpi_reduce(my_droppedDOS(:), DroppedDos(:), DOS_MaxCluster, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr)
        
-       If ( CalcDos ) then
+       if ( my_id .ne. 0 ) deallocate(DOS, DroppedDos)
+       
+       if (my_id .eq. 0) then
           
+          CALL CPU_TIME(finish)
+          TIME = finish - start
+          
+          do i=1,ClusterMax
+             !print*, "Cluster: ", i
+             do j = 1,bins
+                !print*, DOS(j,i)
+                if (DOS(j,i) .ne. DOS(j,i)) then
+                   print*, "DOS NaN", j
+                end if
+                
+             end do
+          end do
           
           CALL PrintDOS( TIME, num_procs )
           
        end If
-       If ( CalcPot ) then
+    end if
+    
+    If ( CalcPot ) then
+       allocate(Potential(bins), TEMP(bins))
+       Potential = 0.0_dp
+       my_DroppedDos(1) = 0.0_dp
+       CALL CPU_TIME(finish)
+       TIME = finish-start
+       CALL mpi_reduce(my_Potential, Potential, bins, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr)
+       if ( my_id .eq. 0 ) then
           CALL OpenFile(200, "POT", "Distribution of Site Potentials in counted clusters", "Site Potentials", &
                "Height of distribution", num_procs )
           write(200,*) "#Maximum cluster Size included: ", ClusterMax
           write(200,*) "#Time (s) = ", TIME
-          CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, bins, Potential )
+          CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, bins, Potential, my_DroppedDos(1) )
           Close(200)
-       end If
-    end if
+       end if
+
+       if ( POT_AllClusters ) then
+          TEMP = 0.0_dp
+          !Left most move
+          a = FLOOR(bins*(POT_EMin - POT_EMin)/DELTA + 1)
+          b = FLOOR(bins*((ChemPot-uSite) - POT_EMin)/DELTA + 1)
+          diff = FLOOR(bins*ChemPot/DELTA)
+          c = a + diff
+          d = b + diff
+          
+          TEMP(c:d) = TEMP(c:d) + Potential(a:b)
+          
+          !Right most move
+          a = FLOOR(bins*(ChemPot - POT_EMin)/DELTA + 1)
+          b = bins !FLOOR(bins*(POT_EMax - POT_EMin)/DELTA + 1)
+          diff = FLOOR(bins*ChemPot/DELTA)
+          c = a - diff
+          d = b - diff
+          if ( c .le. FLOOR(bins*((ChemPot-uSite) - POT_EMin)/DELTA + 1)+diff ) then
+             c = FLOOR(bins*((ChemPot-uSite) - POT_EMin)/DELTA + 1)+diff+1
+             a = a+1
+          end if
+          
+          TEMP(c:d) = TEMP(c:d) + Potential(a:b)
+          
+          !Central part right
+          a = FLOOR(bins*((ChemPot - uSite) - POT_EMin)/DELTA + 1)
+          b = FLOOR(bins*(ChemPot - POT_EMin)/DELTA + 1)
+          diff = FLOOR(bins*ChemPot/DELTA)
+          c = a + diff
+          d = b + diff
+          
+          TEMP(c:d) = TEMP(c:d) + Potential(a:b)/2
+          
+          !Central part 2
+          c = a - diff
+          d = b - diff
+          if ( d .ge. (a + diff) ) then
+             b = b - 1
+             d = a + diff - 1
+          end if
+          
+          TEMP(c:d) = TEMP(c:d) + Potential(a:b)/2
+          
+          CALL OpenFile(200, "DOS1SiteClMax"//trim(str(Pot_MaxCluster))//"_", "Density of states in atomic limit ", &
+               "Site Potentials", "Height of distribution" )
+          write(200,*) "#Maximum cluster Size included: ", Pot_MaxCluster
+          write(200,*) "#Time (s) = ", TIME
+          CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, bins, TEMP, my_DroppedDos(1))
+          Close(200)
+       end if
+       
+          
+    end If
+    
 
     CALL mpi_finalize(ierr)
   end subroutine Full_Dos
@@ -314,7 +410,7 @@ contains
               do i=1,ClusterMax
           CALL OpenFile(100+i, "DOSInc"//trim(str(i))//"_", "Density of States", "Energy", "Density of States", num_procs )
           write(100+i,400) "#Maximum cluster Size included: ", i
-          print*, SitesMissed, real(dim*systemn*num_procs)
+          
           write(100+i,500) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
           write(100+i,500) "#Time (s) = ", TIME
           write(100+i,600) "#This is a gradient DOS, part", i, "of", ClusterMax
