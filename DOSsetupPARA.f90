@@ -146,16 +146,18 @@ contains
        Weight = 0.0_dp
        
        CALL DefineCluster( SitePotential, Sites, weakL, weakR, ClusterSize )
-
-       if ( POT_AllClusters ) then
-          if ( CalcPot .and. (ClusterSize .le. POT_MaxCluster)) then
-             CALL Bin_Data( my_Potential, Sites, Max=POT_EMax, Min=POT_EMin )
-          end if
-       else
-          if ( CalcPot .and. (ClusterSize .eq. POT_MaxCluster)) then
-             CALL Bin_Data(my_Potential, Sites, Max=POT_EMax, Min=POT_EMin)
+       if ( CalcPot ) then
+          if ( POT_AllClusters ) then
+             if ( ClusterSize .le. POT_MaxCluster ) then
+                CALL Bin_Data( my_Potential, Sites, Max=POT_EMax, Min=POT_EMin )
+             end if
+          else
+             if ( ClusterSize .eq. POT_MaxCluster ) then
+                CALL Bin_Data(my_Potential, Sites, Max=POT_EMax, Min=POT_EMin)
+             end if
           end if
        end if
+       
        
        if ( CalcDos ) then
           CALL DiagCluster(ClusterSize,4**ClusterSize,Sites,Energy,Weight,ChemPot,uSite,hop,Periodic)
@@ -271,7 +273,9 @@ contains
        my_DroppedDos(1) = 0.0_dp
        CALL CPU_TIME(finish)
        TIME = finish-start
+       
        CALL mpi_reduce(my_Potential, Potential, bins, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr)
+       print*, sum(Potential)
        if ( my_id .eq. 0 ) then
           CALL OpenFile(200, "POT", "Distribution of Site Potentials in counted clusters", "Site Potentials", &
                "Height of distribution", num_procs )

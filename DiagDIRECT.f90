@@ -322,6 +322,11 @@ contains
        neighbours(i,2) = i+1
        
     end do
+
+    if ( Periodic ) then
+       neighbours(1,1) = nsites
+       neighbours(nsites,2) = 1
+    end if
     
   end subroutine make_neighbours
   !************************************************************************************
@@ -557,11 +562,12 @@ contains
   end subroutine solve_hamiltonian2
   !************************************************************************************
   !************************************************************************************
-  subroutine DiagCluster(nsites,nstates,E,Energy,Weight,mu,U,t)
+  subroutine DiagCluster(nsites,nstates,E,Energy,Weight,mu,U,t,Periodic)
     implicit none
     integer, intent(in) :: nsites,nstates 
     real(dp), intent(in) :: E(nsites), mu, U, t
     real(dp), dimension(nsites*2*nstates), intent(out) :: Energy, Weight
+    logical, parameter, intent(in) :: Periodic
     
     
     real(dp), dimension(nstates) :: grand_potential          ! grand potentials (eigenenergies - mu*number electrons)
@@ -582,7 +588,7 @@ contains
     real(dp), dimension(nstates,nsites) :: IPESdn_MBG, IPESup_MBG ! MBG after a down or up inverse photo emmision respectively (IPESdn_MBG(i,:) is  c^{dagger}_{i,dn}|Psi0> )
     real(dp) :: inner_prod_up, inner_prod_dn             ! inner products used when calculating weight of LDOS contributions (<Psi|PESdn_MBG> or <Psi|IPESdn_MBG>)
     
-    call make_neighbours(nsites, neighbours)
+    call make_neighbours(nsites, neighbours,Periodic)
     MBGvec=0.0_dp
     grand_potential_ground = 0.0_dp
     PESdn_MBG=0.0_dp; PESup_MBG=0.0_dp; IPESdn_MBG=0.0_dp; IPESup_MBG=0.0_dp
