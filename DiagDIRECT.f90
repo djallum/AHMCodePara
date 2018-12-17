@@ -10,7 +10,7 @@
 ! DiagCluster is called first and implements the other subroutines the determine the DOS of the cluster
 
 module Diag
-  use Inputs, only: nsites_, dp
+  use Inputs, only: nsites_, dp, Periodic
   implicit none
 
   Type :: SetUp
@@ -81,7 +81,7 @@ contains
     do n_up=0,nsites_
        do n_dn=0,nsites_
           allocate(H%HFULL(n_up,n_dn)%HSUB(Ops%msize(n_up,n_dn),Ops%msize(n_up,n_dn)))
-          CALL make_neighbours(nsites_, neighbours)
+          CALL make_neighbours(nsites_, neighbours, Periodic)
           CALL BuildOffDiag(n_up,n_dn,H%HFULL(n_up,n_dn)%HSUB,neighbours,t,nsites_)
        end do
     end do
@@ -563,12 +563,11 @@ contains
   end subroutine solve_hamiltonian2
   !************************************************************************************
   !************************************************************************************
-  subroutine DiagCluster(nsites,nstates,E,Energy,Weight,mu,U,t,Periodic)
+  subroutine DiagCluster(nsites,nstates,E,Energy,Weight,mu,U,t)
     implicit none
     integer, intent(in) :: nsites,nstates 
     real(dp), intent(in) :: E(nsites), mu, U, t
     real(dp), dimension(nsites*2*nstates), intent(out) :: Energy, Weight
-    logical, parameter, intent(in) :: Periodic
     
     
     real(dp), dimension(nstates) :: grand_potential          ! grand potentials (eigenenergies - mu*number electrons)
@@ -589,7 +588,7 @@ contains
     real(dp), dimension(nstates,nsites) :: IPESdn_MBG, IPESup_MBG ! MBG after a down or up inverse photo emmision respectively (IPESdn_MBG(i,:) is  c^{dagger}_{i,dn}|Psi0> )
     real(dp) :: inner_prod_up, inner_prod_dn             ! inner products used when calculating weight of LDOS contributions (<Psi|PESdn_MBG> or <Psi|IPESdn_MBG>)
     
-    call make_neighbours(nsites, neighbours,Periodic)
+!    call make_neighbours(nsites, neighbours,Periodic)
     MBGvec=0.0_dp
     grand_potential_ground = 0.0_dp
     PESdn_MBG=0.0_dp; PESup_MBG=0.0_dp; IPESdn_MBG=0.0_dp; IPESup_MBG=0.0_dp
