@@ -22,7 +22,7 @@ contains
   !
   !     Max/Min: Type real. The maximum (Max) and minimum (Min) values to be counted. Contributions outside are not counted
   
-  subroutine Bin_Data( HistoData, Data, Weights, Dropped, Max, Min )
+  subroutine Bin_Data( HistoData, Data, Weights, Dropped, Max, Min, bins )
     implicit none
     real(dp), dimension(:), intent(in) :: Data
     real(dp), dimension(:), Optional, intent(in) :: Weights
@@ -30,6 +30,7 @@ contains
     real, intent(in) :: Max
     real, intent(in) :: Min
     real(dp), optional, intent(inout) :: Dropped
+    integer, intent(in) :: bins
     integer Loop1, Loop2 !Loop integers
  
     ! since both Dropped and Weights are optional there are 2^2 different versions of this subroutine.

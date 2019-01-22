@@ -372,7 +372,7 @@ contains
     real(dp), dimension(dim) :: SitePotential, Hopping, Bonds
     real(dp), dimension(dim) :: ClusterCount, EDiff
     integer, dimension(:), allocatable :: WeakBonds
-    real(dp), dimension(bins) :: HistoBonds, HistoEDiff
+    real(dp), dimension(binsP) :: HistoBonds, HistoEDiff
     
 
     ClusterCount = 0.d0
@@ -390,10 +390,10 @@ contains
             CALL FracSites( WeakBonds, ClusterCount )
        
        if ( CalcBondStrength ) &
-            CALL Bin_Data( HistoData = HistoBonds, Data = log(Bonds), Max = Bond_EMax, Min = Bond_EMin ) 
+            CALL Bin_Data( HistoData = HistoBonds, Data = log(Bonds), Max = Bond_EMax, Min = Bond_EMin, bins=binsP ) 
 
        if ( CalcEnergyDiff ) &
-            CALL Bin_Data( HistoData = HistoEDiff, Data = EDiff, Max = Diff_EMax, Min = Diff_EMin )
+            CALL Bin_Data( HistoData = HistoEDiff, Data = EDiff, Max = Diff_EMax, Min = Diff_EMin, bins=binsP )
        
     end do
 
@@ -406,13 +406,13 @@ contains
     if ( CalcBondStrength ) then
        CALL OpenFile( 200, "LogBonds", "Log(Distribtion of the log(bonds))", &
             "Right-edge of bins in log(bonds) space", "log(Distribution of log(bond strengths)" )
-       CALL PrintData( 200, '(g12.5,g12.5)', Bond_EMin, Bond_EMax, bins, HistoBonds )
+       CALL PrintData( 200, '(g12.5,g12.5)', Bond_EMin, Bond_EMax, binsP, HistoBonds )
        Close(200)
     end if
     if ( CalcEnergyDiff ) then
        CALL OpenFile( 300, "EDIFF", "Distribution of energy differences", &
             "\Delta\epsilon", "Height of distribution at \Delta\epsilon" )
-       CALL PrintData( 300, '(g12.5,g12.5)', Diff_EMin, Diff_EMax, bins, HistoEDiff )
+       CALL PrintData( 300, '(g12.5,g12.5)', Diff_EMin, Diff_EMax, binsP, HistoEDiff )
        Close(300)
     end if
 

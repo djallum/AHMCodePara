@@ -312,7 +312,7 @@ contains
     ! first and last site have neighbours with index 0 which will tell the program that it has no neighbour on that side
     implicit none
     integer, intent(in) :: nsites
-    integer, intent(out), dimension(:,:) :: neighbours
+    integer, intent(out), dimension(nsites,2) :: neighbours
     logical, intent(in) :: Periodic
     integer i
     
@@ -476,7 +476,7 @@ contains
     logical, intent(in) :: Periodic
     integer :: istate, isite                 ! counters for loops
     integer :: ne                            ! counts the number of electrons (used to calculate the phase)
-    integer :: neighbours(2,nsites)
+    integer :: neighbours(nsites,2)
     
     if ( Periodic ) then
        neighbours = 0
@@ -499,13 +499,12 @@ contains
   end subroutine BuildHSUB
   !************************************************************************************
   !************************************************************************************ 
-  subroutine solve_hamiltonian1(E, U, mu, t, neighbours, e_ground, nsites, nstates, Periodic)
+  subroutine solve_hamiltonian1(E, U, mu, t, e_ground, nsites, nstates, Periodic)
     
     implicit none
     integer, intent(in) :: nsites, nstates
     real(dp), intent(in) :: E(nsites), U, mu
     real(dp), intent(in) :: t                    ! the hopping integral
-    integer, intent(in), dimension(:,:) :: neighbours
     real(dp), intent(inout), dimension(0:nsites,0:nsites) :: e_ground       ! array of the lowest grand potential (Gpot) of each submatrix (e_ground(i,j) is lowest Gpot of Hij)
     logical, intent(in) :: Periodic
     integer :: n_up,n_dn                     ! the number of up ad down electrons (used to loop over each submatrix)
@@ -514,17 +513,17 @@ contains
     
     do n_up = 0,nsites             ! loop over all submatrices
        do n_dn = 0,nsites             ! loop over all submatrices
-          Call GetEnergy(n_up,n_dn, neighbours, U, E, mu, t, nsites, nstates, e_ground, Periodic)
+          Call GetEnergy(n_up,n_dn, U, E, mu, t, nsites, nstates, e_ground, Periodic)
        end do
     end do
     
   end subroutine solve_hamiltonian1
   !************************************************************************************
   !************************************************************************************
-  subroutine GetEnergy(n_up,n_dn, neighbours, U, E, mu, t, nsites, nstates, e_ground, Periodic)
+  subroutine GetEnergy(n_up,n_dn, U, E, mu, t, nsites, nstates, e_ground, Periodic)
 
     implicit none
-    integer, intent(in) :: n_up, n_dn, nsites, nstates, neighbours(:,:)
+    integer, intent(in) :: n_up, n_dn, nsites, nstates
     real(dp), intent(inout), dimension(0:nsites,0:nsites) :: e_ground
     real(dp), intent(in) :: E(nsites), U, mu, t
     logical, intent(in) :: Periodic
@@ -541,14 +540,13 @@ contains
   end subroutine GetEnergy
   !************************************************************************************
   !************************************************************************************
-  subroutine solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates, &
+  subroutine solve_hamiltonian2(E,U,mu,t,nsites,nstates, &
        g_up,g_dn, eigenvectors, grand_potential,Periodic)
     implicit none
     integer, intent(in) :: nsites, nstates
     real(dp), intent(in) :: E(nsites), U, mu
     integer, intent(in) :: g_up,g_dn
     real(dp), intent(in) :: t                    ! the hopping integral
-    integer, intent(in), dimension(:,:) :: neighbours
     real(dp), intent(inout), dimension(:) :: grand_potential          ! grand potentials (eigenenergies - mu*number electrons)
     TYPE(cell), intent(inout), dimension(:) :: eigenvectors        ! the many body eigenvectors (MBE) only coefficients of basis states with same n_up,n_dn as it
     logical, intent(in) :: Periodic
@@ -588,7 +586,7 @@ contains
     real(dp) :: grand_potential_ground=0.d0                   ! the lowest grand ensemble energy
     real(dp), dimension(0:nsites,0:nsites) :: e_ground       ! array of the lowest grand potential (Gpot) of each submatrix (e_ground(i,j) is lowest Gpot of Hij) 
     TYPE(cell), dimension(nstates) :: eigenvectors       ! the many body eigenvectors (MBE) only coefficients of basis states with same n_up,n_dn as it  
-    integer, dimension(nsites,2) :: neighbours           ! neighbours(i,:) is all the site that are nearest neighbours to site i
+!    integer, dimension(nsites,2) :: neighbours           ! neighbours(i,:) is all the site that are nearest neighbours to site i
     
     integer :: i, j, k                        ! counters for loops
     integer :: n_up, n_dn                        ! counters for loops (number of up or down electrons)
@@ -612,7 +610,7 @@ contains
     Energy = 0.d0
     Weight = 0.d0
     
-    call solve_hamiltonian1(E, U, mu, t, neighbours, e_ground, nsites, nstates, Periodic)  ! solve for the lowest grand potential of each hamiltonian sub-matrix
+    call solve_hamiltonian1(E, U, mu, t, e_ground, nsites, nstates, Periodic)  ! solve for the lowest grand potential of each hamiltonian sub-matrix
     
     
     grand_potential_ground = minval(e_ground)
@@ -629,20 +627,20 @@ contains
     
     location = Ops(nsites)%mblock(g_up,g_dn)       ! find the location of the lowest grand_potential in the array grand_potential_ground  
 
-    call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
+    call solve_hamiltonian2(E,U,mu,t,nsites,nstates,&
          g_up,g_dn,eigenvectors,grand_potential,Periodic)
 
     !---------Solve for eigenvectors and eigenvalues all sub hamiltonians with +/- 1 electron as MBG--------------------
-    if (g_up /= 0) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
+    if (g_up /= 0) call solve_hamiltonian2(E,U,mu,t,nsites,nstates,&
          g_up-1,g_dn,eigenvectors,grand_potential,Periodic)
     
-    if (g_dn /= 0) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
+    if (g_dn /= 0) call solve_hamiltonian2(E,U,mu,t,nsites,nstates,&
          g_up,g_dn-1,eigenvectors,grand_potential,Periodic)
     
-    if (g_up /= nsites) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
+    if (g_up /= nsites) call solve_hamiltonian2(E,U,mu,t,nsites,nstates,&
          g_up+1,g_dn,eigenvectors,grand_potential,Periodic)
     
-    if (g_dn /= nsites) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
+    if (g_dn /= nsites) call solve_hamiltonian2(E,U,mu,t,nsites,nstates,&
          g_up,g_dn+1,eigenvectors,grand_potential,Periodic)
 
     high = Ops(nsites)%mblock(g_up,g_dn) + Ops(nsites)%msize(g_up,g_dn) - 1                                 ! find range of indexs of fock states in the MBG's submatrix
