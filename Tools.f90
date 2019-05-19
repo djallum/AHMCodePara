@@ -26,11 +26,11 @@ contains
     implicit none
     real(dp), dimension(:), intent(in) :: Data
     real(dp), dimension(:), Optional, intent(in) :: Weights
+    integer, intent(in) :: bins
     real(dp), intent(inout) :: HistoData(bins)
     real, intent(in) :: Max
     real, intent(in) :: Min
     real(dp), optional, intent(inout) :: Dropped
-    integer, intent(in) :: bins
     integer Loop1, Loop2 !Loop integers
  
     ! since both Dropped and Weights are optional there are 2^2 different versions of this subroutine.

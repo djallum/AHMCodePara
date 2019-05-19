@@ -323,7 +323,20 @@ contains
        neighbours(i,2) = i+1
        
     end do
-
+    !6-site 2D is 6 by 4 array (1: left, 2: right, 3: up, 4:down) Betts: 6h2
+    !neighbours(1,1) = 6; neighbours(1,2) = 2; neighbours(1,3) = 5; neighbours(1,4) = 3
+    !neighbours(2,1) = 1; neighbours(2,2) = 3; neighbours(2,3) = 6; neighbours(2,4) = 4
+    !neighbours(3,1) = 2; neighbours(3,2) = 4; neighbours(3,3) = 1; neighbours(3,4) = 5
+    !neighbours(4,1) = 3; neighbours(4,2) = 5; neighbours(4,3) = 2; neighbours(4,4) = 6
+    !neighbours(5,1) = 4; neighbours(5,2) = 6; neighbours(5,3) = 3; neighbours(5,4) = 1
+    !neighbours(6,1) = 5; neighbours(6,2) = 1; neighbours(6,3) = 4; neighbours(6,4) = 2
+    !Betts: 6t0 (1: across, 2: up, 3: down)
+    !neighbours(1,1) = 2; neighbours(1,2) = 3; neighbours(1,3) = 5
+    !neighbours(2,1) = 1; neighbours(2,2) = 4; neighbours(2,3) = 6
+    !neighbours(3,1) = 4; neighbours(3,2) = 5; neighbours(3,3) = 1
+    !neighbours(4,1) = 3; neighbours(4,2) = 6; neighbours(4,3) = 2
+    !neighbours(5,1) = 6; neighbours(5,2) = 1; neighbours(5,3) = 3
+    !neighbours(6,1) = 5; neighbours(6,2) = 2; neighbours(6,3) = 4
     if ( Periodic ) then
        neighbours(1,1) = nsites
        neighbours(nsites,2) = 1
@@ -371,7 +384,7 @@ contains
     integer, intent(in) :: n_up,n_dn
     real(dp), dimension(Ops%msize(n_up,n_dn),Ops%msize(n_up,n_dn)), intent(out) :: HSUB
     integer, intent(in) :: nsites
-    integer, intent(in), dimension(nsites,2) :: neighbours
+    integer, intent(in), dimension(:,:) :: neighbours
     real(dp), intent(in) :: t
 
     integer :: istate, isite, i, j, y        ! counters for loops
