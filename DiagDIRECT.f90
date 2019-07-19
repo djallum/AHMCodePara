@@ -770,14 +770,22 @@ contains
     allocate(ISUPPZ(2*dim))
     allocate(WORK(1),IWORK(1))
     WORK = 0.0_dp; IWORK = 0
-    call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    if ( dp .eq. kind(1.0) ) then
+       call ssyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    else 
+       call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    end if
     LWORK= int(WORK(1))
     LIWORK = IWORK(1)
     
     deallocate(WORK,IWORK)
     allocate(WORK(LWORK),IWORK(LIWORK))
-    
-    call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    if ( dp .eq. kind(1.0) ) then
+       call ssyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    else
+       call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    end if
+
     deallocate(ISUPPZ,WORK,IWORK)
   end subroutine dsyevr_lapack1
   
@@ -830,14 +838,23 @@ contains
     allocate(ISUPPZ(2*dim))
     allocate(WORK(1),IWORK(1))
     WORK = 0.0_dp; IWORK = 0
-    call dsyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    if ( dp .eq. kind(1.0) ) then
+       call ssyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    else
+       call dsyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    end if
+   
     LWORK= int(WORK(1)) * 2
     LIWORK = IWORK(1) * 2
     
     deallocate(WORK,IWORK)
     allocate(WORK(LWORK),IWORK(LIWORK))
+    if ( dp .eq. kind(1.0) ) then
+       call ssyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    else
+       call dsyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    end if
     
-    call dsyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
     deallocate(ISUPPZ,WORK,IWORK)
   end subroutine dsyevr_lapack
   !************************************************************************************
