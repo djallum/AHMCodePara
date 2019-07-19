@@ -530,10 +530,10 @@ contains
     real(dp) :: HSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn))
     real(dp) :: VSUB(Ops(nsites)%msize(n_up,n_dn),Ops(nsites)%msize(n_up,n_dn))
     real(dp) :: WSUB(Ops(nsites)%msize(n_up,n_dn))
+    integer :: i, j
     HSUB = H_hat(nsites)%HFULL(n_up,n_dn)%HSUB
-    
-    call BuildHSUB(n_up, n_dn, HSUB, U, E, t, nsites, Periodic)
 
+    call BuildHSUB(n_up, n_dn, HSUB, U, E, t, nsites, Periodic)
     call ssyevr_lapack1(Ops(nsites)%msize(n_up,n_dn),HSUB,WSUB,VSUB)
     e_ground(n_up,n_dn) = WSUB(1) - mu*(n_up+n_dn)
     
@@ -557,6 +557,7 @@ contains
        allocate(eigenvectors(i+Ops(nsites)%mblock(g_up,g_dn)-1)%comp(1:Ops(nsites)%msize(g_up,g_dn)))
     end do
     HSUB = H_hat(nsites)%HFULL(g_up,g_dn)%HSUB
+
     call BuildHSUB(g_up, g_dn, HSUB, U, E, t, nsites, Periodic)
     call ssyevr_lapack(Ops(nsites)%msize(g_up,g_dn),HSUB,WSUB,VSUB)
     
@@ -600,7 +601,7 @@ contains
     real(dp), dimension(nstates,nsites) :: IPESdn_MBG, IPESup_MBG ! MBG after a down or up inverse photo emmision respectively (IPESdn_MBG(i,:) is  c^{dagger}_{i,dn}|Psi0> )
     real(dp) :: inner_prod_up, inner_prod_dn             ! inner products used when calculating weight of LDOS contributions (<Psi|PESdn_MBG> or <Psi|IPESdn_MBG>)
     real :: start, finish
-    
+ 
     MBGvec=0.d0
     grand_potential_ground = 0.d0
 
