@@ -189,7 +189,8 @@ contains
     UAvg = ((SitePotential(LeftNbr) + uSite) + (SitePotential(RightNbr) + uSite))/2
 
     if ( Size(SitePotential) .eq. dim ) then
-       CALL PruningStats( AAvg, HAvg, UAvg, ABond, HBond1, HBond2 )
+       CALL PruningStats( AAvg, HAvg, UAvg, ABond, HBond1, HBond2,&
+              SitePotential(LeftNbr), SitePotential(RightNbr) )
     end if
     
 
@@ -239,10 +240,10 @@ contains
   ! PruningStats routine. Inputs: Bonds array, SitesRemoved. Output: WeakBonds array
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  subroutine PruningStats( AAvg, HAvg, UAvg, ABond, HBond1, HBond2 )
+  subroutine PruningStats( AAvg, HAvg, UAvg, ABond, HBond1, HBond2, epsilon_1, epsilon_2 )
     implicit none
     real(dp), intent(inout) :: ABond, HBond1, HBond2
-    real(dp), intent(in) :: AAvg, HAvg, UAvg
+    real(dp), intent(in) :: AAvg, HAvg, UAvg, epsilon_1, epsilon_2
     real(dp) :: Bonds(3), Temp_Bonds(3)
     logical :: Pruned(3), IsOnePruned
     integer :: Strongest_index
@@ -253,7 +254,9 @@ contains
     Pruned(1) = .false.; Pruned(2) = .false.; Pruned(3) = .false.
     IsOnePruned = .false.
 
-
+    if ( (ABS(epsilon_1-ChemPot) .gt. abs(hop)) .and. (ABS(epsilon_2-ChemPot) .gt. abs(hop)) &
+           .and. (ABS(epsilon_1+Usite-ChemPot) .gt. abs(hop)) .and. &
+           (ABS(epsilon_2+Usite-ChemPot) .gt. abs(hop)) ) then
     If ( (ABS(AAvg - ChemPot) .gt. prune_cutoff) .and. (ABS(UAvg - ChemPot) .gt. prune_cutoff) ) then
        IsOnePruned = .true.
        Pruned(1) = .true.
@@ -265,7 +268,7 @@ contains
        Pruned(2) = .true.; Pruned(3) = .true.
        HBond1 = 0;HBond2 = 0
     end if
-
+    end if
     Strongest_index = MAXLOC(Bonds, dim = 1)
 
     !The following is an algorithm that determines whether or not the pruning of a bond is "useful"
