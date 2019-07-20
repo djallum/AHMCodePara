@@ -536,6 +536,15 @@ contains
     call BuildHSUB(n_up, n_dn, HSUB, U, E, nsites)
     
     call dsyevr_lapack1(Ops%msize(n_up,n_dn),HSUB,WSUB,VSUB)
+    if ( (n_up .eq. 1) .and. (n_dn .eq. 1) ) then
+       print*, "Eigenvalue of 1,1 gs:", WSUB(1)
+    end if
+    if ( (n_up .eq. 0) .and. (n_dn .eq. 1) ) then
+       print*, "Eigenvalue of 0,1 gs:", WSUB(1)
+    end if
+    if ( (n_up .eq. 2) .and. (n_dn .eq. 1) ) then
+       print*, "Eigenvalue of 2,1 gs:", WSUB(1)
+    end if
     
     e_ground(n_up,n_dn) = WSUB(1) - mu*(n_up+n_dn)
     
@@ -600,7 +609,7 @@ contains
     real(dp), dimension(nstates,nsites) :: PESdn_MBG, PESup_MBG   ! MBG after a down or up photo emmision (PE) respectively (PESdn_MBG(i,:) is  c_{i,dn}|Psi0> )
     real(dp), dimension(nstates,nsites) :: IPESdn_MBG, IPESup_MBG ! MBG after a down or up inverse photo emmision respectively (IPESdn_MBG(i,:) is  c^{dagger}_{i,dn}|Psi0> )
     real(dp) :: inner_prod_up, inner_prod_dn             ! inner products used when calculating weight of LDOS contributions (<Psi|PESdn_MBG> or <Psi|IPESdn_MBG>)
-    
+    real :: start, finish
 !    call make_neighbours(nsites, neighbours,Periodic)
     MBGvec=0.0_dp
     grand_potential_ground = 0.0_dp
@@ -610,10 +619,16 @@ contains
     Energy = 0.0_dp
     Weight = 0.0_dp
 
-    
+    call cpu_time(start)
     call solve_hamiltonian1(E, U, mu, t, neighbours, e_ground, nsites, nstates)  ! solve for the lowest grand potential of each hamiltonian sub-matrix
-
-    
+    call cpu_time(finish)
+    !print*, "Eigenvalue of 1,1 gs:", e_ground(1,1)
+    print*, "Eigenvalue of Fock state |01> in atomic limit:", E(2)
+    print*, "Eigenvalue of Fock state |10> in atomic limit:", E(1)
+    print*, "Eigenvalue of Fock state |11> in atomic limit:", E(1)+E(2)
+    print*, "Eigenvalue of Fock state |20> in atomic limit:", 2*E(1)+U
+    print*, "Eigenvalue of Fock state |21> in atomic limit:", 2*E(1)+E(2)+U
+    print*, "Eigenvalue of Fock state |12> in atomic limit:", 2*E(2)+E(1)+U
     grand_potential_ground = minval(e_ground)
     
     groundloc = minloc(e_ground)
@@ -627,7 +642,7 @@ contains
     max_dn = MIN(nsites,g_dn+1)
     
     location = Ops%mblock(g_up,g_dn)       ! find the location of the lowest grand_potential in the array grand_potential_ground  
-    
+    call cpu_time(start)
     call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
          g_up,g_dn,eigenvectors,grand_potential)
 
@@ -643,12 +658,22 @@ contains
     
     if (g_dn /= nsites) call solve_hamiltonian2(E,U,mu,t,neighbours,nsites,nstates,&
          g_up,g_dn+1,eigenvectors,grand_potential)
-    
+    call cpu_time(finish)
+    print*, "2", finish-start
     high = Ops%mblock(g_up,g_dn) + Ops%msize(g_up,g_dn) - 1                                 ! find range of indexs of fock states in the MBG's submatrix
     MBGvec(Ops%mblock(g_up,g_dn):high) = eigenvectors(location(1))%comp(1:Ops%msize(g_up,g_dn))   ! set MBGvec to the eigenvector corresponding to the lowest energy
-    
+    do i=Ops%mblock(1,1),Ops%mblock(1,1) + Ops%msize(1,1) - 1
+      print*, Ops%fock_states(i,1), Ops%fock_states(i,2)
+    end do
+    do i=1,Ops%msize(1,1)
+       print*, H_hat%HFULL(1,1)%HSUB(i,:)
+    end do
+    print*, E
+    print*, MBGvec
+    print*, "pause"
+    print*, "E", grand_potential_ground
     !------------------calculate PESdn_MBG, PESup_MBG, IPESup_MBG, IPESdn_MBG------------------------------------------
-    
+    call cpu_time(start)
     do j=1,nsites
        do i=1,nstates
           if (Ops%PES_up(i,j)==0) then
@@ -673,10 +698,12 @@ contains
           end if
        end do
     end do
-    
+    call cpu_time(finish)
+    print*, "3", finish-start
     
     !---------------------------calculate the LDOS for all the sites--------------------------------------------------
     k=1
+    call cpu_time(start)
     do n_up=min_up,max_up                ! loop over all possible submatrices
        do n_dn=min_dn,max_dn
           if (n_up == min_up .and. n_dn == min_dn .and. g_up /= 0 .and. g_dn /= 0) CYCLE             ! not allowed (two electrons less then MBG)
@@ -716,6 +743,8 @@ contains
           end do
        end do
     end do
+    call cpu_time(finish)
+    print*, "4", finish-start
     do i=1,nstates
        Call eigenvectors(i)%delete
     end do
@@ -755,7 +784,7 @@ contains
     integer, allocatable, dimension(:) :: ISUPPZ, IWORK
     real(dp), allocatable,dimension(:) :: WORK
     eigvectors = 0.0_dp
-    eigvalues = 0.0_dp   
+    eigvalues = 0.0_dp 
     if (dim == 1) then
        eigvectors = 1
        eigvalues = matrix(1,1)
@@ -775,6 +804,10 @@ contains
     else 
        call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
     end if
+    else
+       call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
+    end if
+
     LWORK= int(WORK(1))
     LIWORK = IWORK(1)
     
@@ -786,6 +819,7 @@ contains
        call dsyevr('N','I','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
     end if
 
+    
     deallocate(ISUPPZ,WORK,IWORK)
   end subroutine dsyevr_lapack1
   
@@ -820,10 +854,8 @@ contains
     integer :: LWORK, LIWORK
     integer, allocatable, dimension(:) :: ISUPPZ, IWORK
     real(dp), allocatable,dimension(:) :: WORK
-    
     eigvalues = 0.0_dp
     eigvectors = 0.0_dp
-    
     if (dim == 1) then
        eigvectors = 1.0_dp
        eigvalues = matrix(1,1)
@@ -844,6 +876,7 @@ contains
        call dsyevr('V','A','U',dim,matrix,LDA,VL,VU,IL,IU,ABSTOL,M,eigvalues,eigvectors,LDZ,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
     end if
    
+
     LWORK= int(WORK(1)) * 2
     LIWORK = IWORK(1) * 2
     

@@ -16,7 +16,7 @@ contains
     
     print*, "Disorder Strength: ", DELTA, "Bond cutoff: ", bond_cutoff, "Interaction Strength", uSite
     print*, "System Size: ", dim, "Number of systems: ", systemn, "Hopping Potential: ", Hop
-    print*, "Prune Cutoff: ", prune_cutoff; print*, "Drop cutoff: ", drop_cutoff
+
     
 
     if ( CalcDos ) then
@@ -370,12 +370,12 @@ contains
     implicit none
     integer loop1
     real(dp), dimension(dim) :: SitePotential, Hopping, Bonds
-    real(dp), dimension(dim) :: ClusterCount, EDiff
+    integer(ip), dimension(dim) :: ClusterCount
     integer, dimension(:), allocatable :: WeakBonds
-    real(dp), dimension(binsP) :: HistoBonds, HistoEDiff
+    real(dp), dimension(binsP) :: HistoBonds, HistoEDiff, EDiff
     
 
-    ClusterCount = 0.d0
+    ClusterCount = 0
     SitePotential = 0.d0
     Hopping = 0.d0
     Bonds = 0.d0
@@ -400,19 +400,22 @@ contains
     if ( CalcFracSites ) then
        CALL OpenFile( 100, "FracOfSites", "Fraction of Sites vs Cluster Size", &
             "Cluster Sizes", "Fraction of Sites" )
-       CALL PrintData( 100, '(g12.5,g12.5)', 0.5, real(dim)+0.5, dim, ClusterCount )
+       ClusterCount = ClusterCount/sum(ClusterCount)
+       CALL PrintData( 100, '(g12.5,g12.5)', 0.5, real(dim)+0.5, dim, Data_int=ClusterCount )
        Close(100)
     end if
     if ( CalcBondStrength ) then
        CALL OpenFile( 200, "LogBonds", "Log(Distribtion of the log(bonds))", &
             "Right-edge of bins in log(bonds) space", "log(Distribution of log(bond strengths)" )
-       CALL PrintData( 200, '(g12.5,g12.5)', Bond_EMin, Bond_EMax, binsP, HistoBonds )
+       HistoBonds = HistoBonds/sum(HistoBonds)
+       CALL PrintData( 200, '(g12.5,g12.5)', Bond_EMin, Bond_EMax, binsP, Data_dp=HistoBonds )
        Close(200)
     end if
     if ( CalcEnergyDiff ) then
        CALL OpenFile( 300, "EDIFF", "Distribution of energy differences", &
             "\Delta\epsilon", "Height of distribution at \Delta\epsilon" )
-       CALL PrintData( 300, '(g12.5,g12.5)', Diff_EMin, Diff_EMax, binsP, HistoEDiff )
+       HistoEDiff = HistoEDiff/sum(HistoEDiff)
+       CALL PrintData( 300, '(g12.5,g12.5)', Diff_EMin, Diff_EMax, binsP, Data_dp=HistoEDiff )
        Close(300)
     end if
 
@@ -425,7 +428,7 @@ contains
     implicit none
     integer loop1, loop2!loop integer
     integer, dimension(:), intent(in) :: WeakBonds !An array where each element is 0 or 1. 1 means weak bond, 0 means strong bond
-    real(dp), intent(out) :: ClusterCount(dim) !Counts the number of clusters recorded for each cluster size
+    integer(ip), intent(out) :: ClusterCount(dim) !Counts the number of clusters recorded for each cluster size
     integer ClusterSize !contains the size of the current cluster
     integer LbondLabel, RbondLabel !The number that labels the left and right weak bonds that neighbour each cluster
 

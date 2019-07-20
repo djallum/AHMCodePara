@@ -172,30 +172,53 @@ contains
   !
   !     Dropped : (OPTIONAL) real variable. Counts the combined weight that is less than min or greater than max for the purposes of normalization
   
-  subroutine PrintData( Unum, Form, Min, Max, BinNum, Data, Dropped )
+  subroutine PrintData( Unum, Form, Min, Max, BinNum, Data_DOS, Data_dp, Data_int, Dropped )
     implicit none
     integer, intent(in) :: Unum, BinNum
     character(len=*), intent(in) :: Form
-    real(dp), intent(in), dimension(:) :: Data
     real, intent(in) :: Min, Max
     real(dp), optional, intent(in) :: Dropped
+    real(dp), optional, intent(in), dimension(:) :: Data_DOS, Data_dp
+    integer(ip), optional, intent(in), dimension(:) :: Data_int
     real(dp) :: width
-    integer :: Loop1 ! Loop integer for writing to file
+    integer :: Loop1
+    integer(ip) :: sum1
 
     !This is Dropped is present
-    If ( Present(Dropped) ) then
+    if ( Present(Data_DOS) ) then
+       if ( Present(Dropped) ) then
+          width = (Max-Min)/BinNum
+          do Loop1=1,BinNum
+             write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data_DOS(Loop1)/ &
+                  ( (Sum(Data_DOS) + Dropped) * width )
+          end do
+       else
+          !If not present this is used. Difference is minor but not dividing by Dropped or the sum of data.
+          !Second part is to enable cumulative DOS (DOS with clustermax=1,2,3,4,5 normalized to the DOS with clustermax = 6)
+          width = (Max-Min)/BinNum
+          do Loop1=1,BinNum
+             write(Unum,( Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data_DOS(Loop1)/( width )
+          end do
+       end if
+    end if
+
+    if ( Present(Data_dp) ) then
        width = (Max-Min)/BinNum
        do Loop1=1,BinNum
-          write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( (Sum(Data) + Dropped) * width )
+          write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data_dp(Loop1)/( Sum(Data_dp)*width )
        end do
-    else
-       !If not present this is used. Difference is minor but not dividing by Dropped or the sum of data.
-       !Second part is to enable cumulative DOS (DOS with clustermax=1,2,3,4,5 normalized to the DOS with clustermax = 6)
-       width = (Max-Min)/BinNum
+    end if
+
+    if (Present(Data_int) ) then
+       sum1=0
        do Loop1=1,BinNum
-          write(Unum,( Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data(Loop1)/( width )
+          sum1 = sum1 + Data_int(Loop1)
        end do
-    end If
+       width = (Max - Min)/real(BinNum)
+       do Loop1=1,BinNum
+          write(Unum,(Form)) Min + ( Max - Min )*Loop1/real(BinNum) - BinWidth/2, Data_int(Loop1)/(sum1*width)
+       end do
+    end if
     
     Close(Unum)
 

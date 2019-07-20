@@ -201,7 +201,7 @@ contains
 
 
 
-
+    
     CALL CPU_TIME(start)
 
     CALL mpi_init(ierr)
@@ -210,12 +210,15 @@ contains
    
 
     CALL init_random_seed(my_id)
+   
     if (my_id .eq. 0) CALL CorrectInputs( )
     k=0
     do i = 1,systemn
+      
        if ( mod(i,int(0.1*systemn)) == 0.0 ) then
           print*, int(i/real(systemn)*100), "%", "on process", my_id
        end if
+       
        SitePotential = 0.0_dp
        Hopping = 0.0_dp
        Bonds = 0.0_dp
@@ -228,6 +231,7 @@ contains
           !print*, "All Bonds Strong"
           CYCLE
        end if
+       
        CALL system_Dos( my_DOS, my_droppedDOS, my_Potential, My_SitesMissed, SitePotential, WeakBonds )
     end do
 
@@ -277,65 +281,68 @@ contains
        TIME = finish-start
        
        CALL mpi_reduce(my_Potential, Potential, binsP, mpi_double_precision, mpi_sum, 0, mpi_comm_world, ierr)
-       print*, sum(Potential)
        if ( my_id .eq. 0 ) then
           CALL OpenFile(200, "POT", "Distribution of Site Potentials in counted clusters", "Site Potentials", &
                "Height of distribution", num_procs )
-          write(200,*) "#Maximum cluster Size included: ", ClusterMax
+          if ( POT_AllClusters ) then
+             write(200,*) "#Maximum cluster Size included: ", POT_MaxCluster
+          else
+             write(200,*) "#Cluster size included: ", Pot_MaxCluster
+          end if
           write(200,*) "#Time (s) = ", TIME
-          CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, binsP, Potential, my_DroppedDos(1) )
+          CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, binsP, Data_dp=Potential )
           Close(200)
        end if
 
-       !if ( POT_AllClusters ) then
-          TEMP = 0.0_dp
-          !Left most move
-          a = FLOOR(binsP*(POT_EMin - POT_EMin)/DELTA + 1)
-          b = FLOOR(binsP*((ChemPot-uSite) - POT_EMin)/DELTA + 1)
-          diff = FLOOR(binsP*ChemPot/DELTA)
-          c = a + diff
-          d = b + diff
-          
-          TEMP(c:d) = TEMP(c:d) + Potential(a:b)
-          
-          !Right most move
-          a = FLOOR(binsP*(ChemPot - POT_EMin)/DELTA + 1)
-          b = binsP !FLOOR(bins*(POT_EMax - POT_EMin)/DELTA + 1)
-          diff = FLOOR(binsP*ChemPot/DELTA)
-          c = a - diff
-          d = b - diff
-          if ( c .le. FLOOR(binsP*((ChemPot-uSite) - POT_EMin)/DELTA + 1)+diff ) then
-             c = FLOOR(binsP*((ChemPot-uSite) - POT_EMin)/DELTA + 1)+diff+1
-             a = a+1
-          end if
-          
-          TEMP(c:d) = TEMP(c:d) + Potential(a:b)
-          
-          !Central part right
-          a = FLOOR(binsP*((ChemPot - uSite) - POT_EMin)/DELTA + 1)
-          b = FLOOR(binsP*(ChemPot - POT_EMin)/DELTA + 1)
-          diff = FLOOR(binsP*ChemPot/DELTA)
-          c = a + diff
-          d = b + diff
-          
-          TEMP(c:d) = TEMP(c:d) + Potential(a:b)/2
-          
-          !Central part 2
-          c = a - diff
-          d = b - diff
-          if ( d .ge. (a + diff) ) then
-             b = b - 1
-             d = a + diff - 1
-          end if
-          
-          TEMP(c:d) = TEMP(c:d) + Potential(a:b)/2
-          
-          CALL OpenFile(200, "DOS1SiteClMax"//trim(str(Pot_MaxCluster))//"_", "Density of states in atomic limit ", &
-               "Site Potentials", "Height of distribution" )
-          write(200,*) "#Maximum cluster Size included: ", Pot_MaxCluster
-          write(200,*) "#Time (s) = ", TIME
-          CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, binsP, TEMP, my_DroppedDos(1))
-          Close(200)
+!!$       !if ( POT_AllClusters ) then
+!!$          TEMP = 0.0_dp
+!!$          !Left most move
+!!$          a = FLOOR(binsP*(POT_EMin - POT_EMin)/DELTA + 1)
+!!$          b = FLOOR(binsP*((ChemPot-uSite) - POT_EMin)/DELTA + 1)
+!!$          diff = FLOOR(binsP*ChemPot/DELTA)
+!!$          c = a + diff
+!!$          d = b + diff
+!!$          
+!!$          TEMP(c:d) = TEMP(c:d) + Potential(a:b)
+!!$          
+!!$          !Right most move
+!!$          a = FLOOR(binsP*(ChemPot - POT_EMin)/DELTA + 1)
+!!$          b = binsP !FLOOR(bins*(POT_EMax - POT_EMin)/DELTA + 1)
+!!$          diff = FLOOR(binsP*ChemPot/DELTA)
+!!$          c = a - diff
+!!$          d = b - diff
+!!$          if ( c .le. FLOOR(binsP*((ChemPot-uSite) - POT_EMin)/DELTA + 1)+diff ) then
+!!$             c = FLOOR(binsP*((ChemPot-uSite) - POT_EMin)/DELTA + 1)+diff+1
+!!$             a = a+1
+!!$          end if
+!!$          
+!!$          TEMP(c:d) = TEMP(c:d) + Potential(a:b)
+!!$          
+!!$          !Central part right
+!!$          a = FLOOR(binsP*((ChemPot - uSite) - POT_EMin)/DELTA + 1)
+!!$          b = FLOOR(binsP*(ChemPot - POT_EMin)/DELTA + 1)
+!!$          diff = FLOOR(binsP*ChemPot/DELTA)
+!!$          c = a + diff
+!!$          d = b + diff
+!!$          
+!!$          TEMP(c:d) = TEMP(c:d) + Potential(a:b)/2
+!!$          
+!!$          !Central part 2
+!!$          c = a - diff
+!!$          d = b - diff
+!!$          if ( d .ge. (a + diff) ) then
+!!$             b = b - 1
+!!$             d = a + diff - 1
+!!$          end if
+!!$          
+!!$          TEMP(c:d) = TEMP(c:d) + Potential(a:b)/2
+!!$          
+!!$          CALL OpenFile(200, "DOS1SiteClMax"//trim(str(Pot_MaxCluster))//"_", "Density of states in atomic limit ", &
+!!$               "Site Potentials", "Height of distribution" )
+!!$          write(200,*) "#Maximum cluster Size included: ", Pot_MaxCluster
+!!$          write(200,*) "#Time (s) = ", TIME
+!!$          CALL PrintData(200, '(g12.5,g12.5)', POT_EMin, POT_EMax, binsP, TEMP, my_DroppedDos(1))
+!!$          Close(200)
        !end if
        
           
@@ -399,18 +406,18 @@ contains
           CALL OpenFile(100+i, "DOS_"//trim(str(i))//"Site_", "Density of States", "Energy", "Density of States", num_procs )
           write(100+i,400) "#Cluster Size included: ", i
           write(100+i,500) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
-          write(100+i,500) "#Time (s) = ", TIME
+          write(100+i,*) "#Time (s) = ", TIME
           write(100+i,600) "#This is not a gradient DOS, part", i, "of", ClusterMax
-          CALL PrintData(100+i, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, binsD, DOS(:,i), DroppedDos(i) )
+          CALL PrintData(100+i, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, binsD, Data_DOS=DOS(:,i), Dropped=DroppedDos(i) )
           close(100+i)
        end do
     else if ( DOS_MaxCluster .eq. 1 ) then
        CALL OpenFile(100, "DOS", "Density of States", "Energy", "Density of States", num_procs )
        write(100,400) "#Maximum cluster Size included: ", ClusterMax
        write(100,500) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
-       write(100,500) "#Time (s) = ", TIME
+       write(100,*) "#Time (s) = ", TIME
        write(100,'(A)') "#This is not a gradient DOS"
-       CALL PrintData(100, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, binsD, DOS(:,1), DroppedDos(1))
+       CALL PrintData(100, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, binsD, Data_DOS=DOS(:,1), Dropped=DroppedDos(1))
        Close(100)
     else if ( DOS_MaxCluster .eq. ClusterMax ) then
               do i=1,ClusterMax
@@ -418,12 +425,12 @@ contains
           write(100+i,400) "#Maximum cluster Size included: ", i
           
           write(100+i,500) "#Fraction of sites missed: ", SitesMissed/real(dim*systemn*num_procs)
-          write(100+i,500) "#Time (s) = ", TIME
+          write(100+i,*) "#Time (s) = ", TIME
           write(100+i,600) "#This is a gradient DOS, part", i, "of", ClusterMax
 
           DOS(:,i) = DOS(:,i)/(Sum(DOS(:,DOS_MaxCluster)) + DroppedDos(DOS_MaxCluster))
           
-          CALL PrintData(100+i, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, binsD, DOS(:,i))
+          CALL PrintData(100+i, '(F15.8,F15.8)', DOS_EMin, DOS_EMax, binsD, Data_DOS=DOS(:,i))
           Close(100+i)
        end do
     end if
