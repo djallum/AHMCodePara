@@ -248,15 +248,15 @@ contains
     logical :: Pruned(3), IsOnePruned
     integer :: Strongest_index
     integer :: i !Looping
-    real(dp) :: NextStrong
-    
+    real(dp) :: NextStrong, Space
+    Space = 0.75*abs(hop)
     Bonds(1) = ABond; Bonds(2) = HBond1; Bonds(3) = HBond2
     Pruned(1) = .false.; Pruned(2) = .false.; Pruned(3) = .false.
     IsOnePruned = .false.
 
-    if ( (ABS(epsilon_1-ChemPot) .gt. abs(hop)) .and. (ABS(epsilon_2-ChemPot) .gt. abs(hop)) &
-           .and. (ABS(epsilon_1+Usite-ChemPot) .gt. abs(hop)) .and. &
-           (ABS(epsilon_2+Usite-ChemPot) .gt. abs(hop)) ) then
+    if ( (ABS(epsilon_1-ChemPot) .gt. Space) .and. (ABS(epsilon_2-ChemPot) .gt. Space) &
+           .and. (ABS(epsilon_1+Usite-ChemPot) .gt. Space) .and. &
+           (ABS(epsilon_2+Usite-ChemPot) .gt. Space) ) then
     If ( (ABS(AAvg - ChemPot) .gt. prune_cutoff) .and. (ABS(UAvg - ChemPot) .gt. prune_cutoff) ) then
        IsOnePruned = .true.
        Pruned(1) = .true.
